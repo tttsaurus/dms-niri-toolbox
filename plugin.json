@@ -1,0 +1,12 @@
+{
+  "id": "toolbox",
+  "name": "Toolbox",
+  "description": "Personal desktop toolbox for DMS & Niri",
+  "version": "0.1.0",
+  "author": "tttsaurus",
+  "icon": "widgets",
+  "type": "widget",
+  "component": "./Toolbox.qml",
+  "settings": "./ToolboxSettings.qml",
+  "permissions": ["settings_read", "settings_write"]
+}
