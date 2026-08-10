@@ -57,6 +57,14 @@ PluginComponent {
 
     Component.onCompleted: ensureValidPage()
 
+    function saveSetting(key, value) {
+        pluginService.savePluginData(
+            pluginId,
+            key,
+            value
+        )
+    }
+
     horizontalBarPill: Component {
         Row {
             spacing: Theme.spacingS
