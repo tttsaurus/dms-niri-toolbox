@@ -14,6 +14,7 @@
   dms restart
   ```
 - Goto DMS `Settings -> Plugins` and turn on the plugin
+- Goto DMS `Dank Bar -> Widgets` and add the plugin
 
 Check plugin status:
 ```bash
@@ -23,4 +24,9 @@ dms ipc call plugins list
 Reload `toolbox`:
 ```bash
 dms ipc call plugins reload toolbox
+```
+OR
+```bash
+dms ipc call plugins reload toolbox
+dms restart
 ```
