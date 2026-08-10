@@ -41,6 +41,15 @@ PluginSettings {
     }
 
     ToggleSetting {
+        settingKey: "showSettingsPage"
+
+        label: "Settings"
+        description: "Show the settings page in Toolbox"
+
+        defaultValue: true
+    }
+
+    ToggleSetting {
         settingKey: "showJavaPage"
 
         label: "Java Switch"

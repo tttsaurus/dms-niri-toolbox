@@ -14,13 +14,16 @@ PluginComponent {
 
     property string displayText: "Toolbox"
 
+    property bool showSettingsPage: pluginData.showSettingsPage !== undefined ? pluginData.showSettingsPage : true
     property bool showJavaPage: pluginData.showJavaPage !== undefined ? pluginData.showJavaPage : true
     property bool showNiriShaderPage:pluginData.showNiriShaderPage !== undefined ? pluginData.showNiriShaderPage : true
 
-    property string selectedPage: "java"
+    property string selectedPage: ""
 
     function isPageEnabled(page) {
         switch (page) {
+            case "settings":
+                return showSettingsPage
             case "java":
                 return showJavaPage
             case "niriShader":
@@ -31,6 +34,9 @@ PluginComponent {
     }
 
     function firstEnabledPage() {
+        if (showSettingsPage)
+            return "settings"
+
         if (showJavaPage)
             return "java"
 
@@ -45,6 +51,7 @@ PluginComponent {
             selectedPage = firstEnabledPage()
     }
 
+    onShowSettingsPageChanged: ensureValidPage()
     onShowJavaPageChanged: ensureValidPage()
     onShowNiriShaderPageChanged: ensureValidPage()
 
@@ -200,6 +207,18 @@ PluginComponent {
                     SidebarItem {
                         width: parent.width
 
+                        visible: root.showSettingsPage
+
+                        iconName: "settings"
+                        text: "Settings"
+
+                        selected: root.selectedPage === "settings"
+                        onClicked: root.selectedPage = "settings"
+                    }
+
+                    SidebarItem {
+                        width: parent.width
+
                         visible: root.showJavaPage
 
                         iconName: "coffee"
@@ -240,6 +259,11 @@ PluginComponent {
 
                         source: {
                             switch (root.selectedPage) {
+                                case "settings":
+                                    return Qt.resolvedUrl(
+                                        "pages/SettingsPage.qml"
+                                    )
+
                                 case "java":
                                     return Qt.resolvedUrl(
                                         "pages/JavaPage.qml"
