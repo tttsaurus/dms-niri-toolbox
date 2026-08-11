@@ -53,6 +53,7 @@ Item {
 
         targetWidth: root.targetWidth
         targetHeight: root.targetHeight
+        mode: root.controller.mode
     }
 
     Loader {

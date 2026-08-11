@@ -5,8 +5,34 @@ Item {
 
     required property real targetWidth
     required property real targetHeight
+    required property string mode
 
     property alias contentItem: contentLayer
+
+    readonly property real targetRadius: {
+        switch (root.mode) {
+            case "compact":
+                return 18
+
+            case "peek":
+                return 18
+
+            case "expanded":
+                return 28
+
+            default:
+                return 18
+        }
+    }
+
+    property real animatedRadius: root.targetRadius
+
+    Behavior on animatedRadius {
+        NumberAnimation {
+            duration: 240
+            easing.type: Easing.OutQuart
+        }
+    }
 
     width: targetWidth
     height: targetHeight
@@ -32,8 +58,9 @@ Item {
         anchors.fill: parent
 
         visible: squircleEffect.status !== ShaderEffect.Compiled
+
         color: "black"
-        radius: Math.min(width, height) * 0.35
+        radius: root.animatedRadius
     }
 
     ShaderEffect {
@@ -45,6 +72,8 @@ Item {
             Math.max(width, 1),
             Math.max(height, 1)
         )
+
+        property real radiusPx: root.animatedRadius
 
         fragmentShader: Qt.resolvedUrl("shaders/island_squircle.frag.qsb")
 
