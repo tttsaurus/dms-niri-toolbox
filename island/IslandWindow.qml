@@ -9,7 +9,10 @@ PanelWindow {
 
     property var barAnchor: null
 
+    required property real compactWidth
+
     readonly property real barCenterY: barAnchor && barAnchor.centerY != null ? barAnchor.centerY : 24
+    readonly property real barThickness: barAnchor && barAnchor.barThickness != null ? barAnchor.barThickness : 36
 
     screen: modelData
 
@@ -39,6 +42,9 @@ PanelWindow {
 
         anchors.horizontalCenter: parent.horizontalCenter
 
+        compactWidth: root.compactWidth
+        compactHeight: root.barThickness
+        
         y: root.barCenterY - compactHeight / 2
     }
 }

@@ -8,8 +8,9 @@ Rectangle {
 
     property bool expanded: false
 
-    readonly property real compactWidth: 148
-    readonly property real compactHeight: 36
+    required property real compactWidth
+    required property real compactHeight
+
     readonly property real expandedWidth: 620
     readonly property real expandedHeight: 360
 

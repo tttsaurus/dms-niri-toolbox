@@ -11,16 +11,16 @@ PluginComponent {
 
     layerNamespacePlugin: "toolbox"
 
-    property bool displaysText: pluginData.displaysPillText ?? true
-    property string displayText: pluginData.pillDisplayText ?? "Toolbox"
+    readonly property bool displaysText: pluginData.displaysPillText ?? true
+    readonly property string displayText: pluginData.pillDisplayText ?? "Toolbox"
 
-    property bool showSettingsPage: pluginData.showSettingsPage ?? true
-    property bool showJavaPage: pluginData.showJavaPage ?? true
-    property bool showNiriShaderPage: pluginData.showNiriShaderPage ?? true
-    property bool showDynamicIslandPage: pluginData.showDynamicIslandPage ?? true
+    readonly property bool showSettingsPage: pluginData.showSettingsPage ?? true
+    readonly property bool showJavaPage: pluginData.showJavaPage ?? true
+    readonly property bool showNiriShaderPage: pluginData.showNiriShaderPage ?? true
+    readonly property bool showDynamicIslandPage: pluginData.showDynamicIslandPage ?? true
 
-    property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? true
-    property int islandReservedWidth: {
+    readonly property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? true
+    readonly property int islandReservedWidth: {
         const value = Number(pluginData.islandReservedWidth ?? 168)
         return Number.isFinite(value) ? Math.floor(value) : 168
     }

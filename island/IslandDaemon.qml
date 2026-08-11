@@ -2,11 +2,16 @@ import QtQuick
 import Quickshell
 
 import qs.Modules.Plugins
+import qs.Common
 
 PluginComponent {
     id: root
 
-    readonly property bool islandEnabled: pluginData.dynamicIslandEnabled ?? true
+    readonly property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? true
+    readonly property int islandReservedWidth: {
+        const value = Number(pluginData.islandReservedWidth ?? 168)
+        return Number.isFinite(value) ? Math.floor(value) : 168
+    }
 
     property int barAnchorRevision: 0
 
@@ -37,10 +42,11 @@ PluginComponent {
     }
 
     Variants {
-        model: root.islandEnabled ? Quickshell.screens : []
+        model: root.dynamicIslandEnabled ? Quickshell.screens : []
 
         IslandWindow {
             barAnchor: root.barAnchorFor(modelData.name)
+            compactWidth: root.islandReservedWidth
         }
     }
 }
