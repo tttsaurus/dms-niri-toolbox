@@ -192,6 +192,60 @@ Item {
                     }
                 }
             }
+
+            StyledRect {
+                width: parent.width
+                height: 80
+
+                radius: Theme.cornerRadius
+                color: Theme.surfaceContainerHigh
+
+                Row {
+                    anchors {
+                        fill: parent
+                        leftMargin: Theme.spacingM
+                        rightMargin: Theme.spacingM
+                    }
+
+                    spacing: Theme.spacingM
+
+                    Column {
+                        width: parent.width - dynamicIslandToggle.width - Theme.spacingM
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Theme.spacingXS
+
+                        StyledText {
+                            width: parent.width
+                            text: "Dynamic Island"
+                            font.pixelSize: Theme.fontSizeMedium
+                            font.weight: Font.Medium
+                            color: Theme.surfaceText
+                        }
+
+                        StyledText {
+                            width: parent.width
+                            text: "Show the top-center Dynamic Island overlay"
+                            font.pixelSize: Theme.fontSizeSmall
+                            color: Theme.surfaceVariantText
+                            wrapMode: Text.WordWrap
+                        }
+                    }
+
+                    DankToggle {
+                        id: dynamicIslandToggle
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        checked: toolboxRoot ? toolboxRoot.dynamicIslandEnabled : true
+                        onToggled: isChecked => {
+                            if (!toolboxRoot)
+                                return
+
+                            toolboxRoot.saveSetting("dynamicIslandEnabled", isChecked)
+                        }
+                    }
+                }
+            }
+
         }
     }
 }

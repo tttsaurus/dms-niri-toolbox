@@ -16,7 +16,9 @@ PluginComponent {
 
     property bool showSettingsPage: pluginData.showSettingsPage !== undefined ? pluginData.showSettingsPage : true
     property bool showJavaPage: pluginData.showJavaPage !== undefined ? pluginData.showJavaPage : true
-    property bool showNiriShaderPage:pluginData.showNiriShaderPage !== undefined ? pluginData.showNiriShaderPage : true
+    property bool showNiriShaderPage: pluginData.showNiriShaderPage !== undefined ? pluginData.showNiriShaderPage : true
+
+    property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled !== undefined ? pluginData.dynamicIslandEnabled : true
 
     property string selectedPage: ""
 
@@ -55,14 +57,80 @@ PluginComponent {
     onShowJavaPageChanged: ensureValidPage()
     onShowNiriShaderPageChanged: ensureValidPage()
 
-    Component.onCompleted: ensureValidPage()
-
     function saveSetting(key, value) {
         pluginService.savePluginData(
             pluginId,
             key,
             value
         )
+    }
+
+    function publishBarGeometry() {
+        if (!pluginService || !pluginId)
+            return
+
+        if (!parentScreen || !blurBarWindow)
+            return
+
+        const screenName = parentScreen.name
+
+        const spacing = blurBarWindow.effectiveSpacing !== undefined ? blurBarWindow.effectiveSpacing : barSpacing
+        const thickness = blurBarWindow.effectiveBarThickness !== undefined ? blurBarWindow.effectiveBarThickness : barThickness
+        const position = barConfig && barConfig.position !== undefined ? barConfig.position : 0
+
+        let centerY = 0
+
+        switch (position) {
+            case 0: // top
+                centerY = spacing + thickness / 2
+                break
+
+            case 1: // bottom
+                centerY = parentScreen.height - spacing - thickness / 2
+                break
+        }
+
+        const current = pluginService.getGlobalVar(
+            pluginId,
+            "barGeometry",
+            {}
+        )
+
+        const next = Object.assign({}, current)
+
+        next[screenName] = {
+            position: position,
+            spacing: spacing,
+            thickness: thickness,
+            centerY: centerY
+        }
+
+        pluginService.setGlobalVar(
+            pluginId,
+            "barGeometry",
+            next
+        )
+    }
+
+    onParentScreenChanged: publishBarGeometry()
+    onBarThicknessChanged: publishBarGeometry()
+    onBarConfigChanged: publishBarGeometry()
+
+    Component.onCompleted: {
+        ensureValidPage()
+        publishBarGeometry()
+    }
+
+    Connections {
+        target: root.blurBarWindow
+
+        function onEffectiveSpacingChanged() {
+            root.publishBarGeometry()
+        }
+
+        function onEffectiveBarThicknessChanged() {
+            root.publishBarGeometry()
+        }
     }
 
     horizontalBarPill: Component {
