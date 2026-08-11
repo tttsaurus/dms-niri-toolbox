@@ -37,6 +37,30 @@ PluginSettings {
         horizontalInset: 0
     }
 
+    ToggleSetting {
+        settingKey: "displaysPillText"
+
+        label: "Displays Pill Text"
+        description: "Show the text on the Toolbox pill"
+
+        defaultValue: true
+    }
+
+    StringSetting {
+        settingKey: "pillDisplayText"
+
+        label: "Pill Display Text"
+        description: "The text to display on the Toolbox pill"
+
+        placeholder: "Toolbox"
+        defaultValue: "Toolbox"
+    }
+
+    SectionDivider {
+        width: parent.width
+        horizontalInset: 0
+    }
+
     StyledText {
         width: parent.width
 
@@ -70,6 +94,15 @@ PluginSettings {
 
         label: "Niri Shader"
         description: "Show the Niri shader manager in Toolbox"
+
+        defaultValue: true
+    }
+
+    ToggleSetting {
+        settingKey: "showDynamicIslandPage"
+
+        label: "Dynamic Island"
+        description: "Show the Dynamic Island in Toolbox"
 
         defaultValue: true
     }

@@ -150,6 +150,18 @@ Item {
                 selected: toolboxRoot.selectedPage === "niriShader"
                 onClicked: toolboxRoot.selectedPage = "niriShader"
             }
+
+            SidebarItem {
+                width: parent.width
+
+                visible: toolboxRoot.showDynamicIslandPage
+
+                iconName: "dialogs"
+                text: "Dynamic Island"
+
+                selected: toolboxRoot.selectedPage === "dynamicIsland"
+                onClicked: toolboxRoot.selectedPage = "dynamicIsland"
+            }
         }
 
         Rectangle {
@@ -178,6 +190,9 @@ Item {
 
                         case "niriShader":
                             return Qt.resolvedUrl("../pages/NiriShaderPage.qml")
+
+                        case "dynamicIsland":
+                            return Qt.resolvedUrl("../pages/DynamicIslandPage.qml")
 
                         default:
                             return ""

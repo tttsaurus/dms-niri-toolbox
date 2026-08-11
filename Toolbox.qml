@@ -11,11 +11,13 @@ PluginComponent {
 
     layerNamespacePlugin: "toolbox"
 
-    property string displayText: "Toolbox"
+    property bool displaysText: pluginData.displaysPillText !== undefined ? pluginData.displaysPillText : true
+    property string displayText: pluginData.pillDisplayText || "Toolbox"
 
     property bool showSettingsPage: pluginData.showSettingsPage !== undefined ? pluginData.showSettingsPage : true
     property bool showJavaPage: pluginData.showJavaPage !== undefined ? pluginData.showJavaPage : true
     property bool showNiriShaderPage: pluginData.showNiriShaderPage !== undefined ? pluginData.showNiriShaderPage : true
+    property bool showDynamicIslandPage: pluginData.showDynamicIslandPage !== undefined ? pluginData.showDynamicIslandPage : true
 
     property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled !== undefined ? pluginData.dynamicIslandEnabled : true
     property int islandReservedWidth: 168
@@ -33,6 +35,9 @@ PluginComponent {
             case "niriShader":
                 return showNiriShaderPage
 
+            case "dynamicIsland":
+                return showDynamicIslandPage
+
             default:
                 return false
         }
@@ -47,6 +52,9 @@ PluginComponent {
 
         if (showNiriShaderPage)
             return "niriShader"
+
+        if (showDynamicIslandPage)
+            return "dynamicIsland"
 
         return ""
     }
@@ -67,6 +75,7 @@ PluginComponent {
     onShowSettingsPageChanged: ensureValidPage()
     onShowJavaPageChanged: ensureValidPage()
     onShowNiriShaderPageChanged: ensureValidPage()
+    onShowDynamicIslandPageChanged: ensureValidPage()
 
     Component.onCompleted: ensureValidPage()
 
@@ -88,22 +97,17 @@ PluginComponent {
 
             DankIcon {
                 name: "widgets"
-
                 size: Theme.iconSize
-
                 color: Theme.primary
-
                 anchors.horizontalCenter: parent.horizontalCenter
             }
 
             StyledText {
                 text: root.displayText
-
                 font.pixelSize: Theme.fontSizeSmall
-
                 color: Theme.surfaceText
-
                 anchors.horizontalCenter: parent.horizontalCenter
+                visible: root.displaysText
             }
         }
     }

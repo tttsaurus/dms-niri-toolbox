@@ -105,20 +105,16 @@ Row {
 
     DankIcon {
         name: "widgets"
-
         size: Theme.iconSize
         color: Theme.primary
-
         anchors.verticalCenter: parent.verticalCenter
     }
 
     StyledText {
         text: root.toolboxRoot.displayText
-
         font.pixelSize: Theme.fontSizeMedium
-
         color: Theme.surfaceText
-
         anchors.verticalCenter: parent.verticalCenter
+        visible: root.toolboxRoot.displaysText
     }
 }

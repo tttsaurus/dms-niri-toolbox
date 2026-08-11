@@ -3,6 +3,8 @@ import QtQuick
 import qs.Common
 import qs.Widgets
 
+import "../components"
+
 Item {
     id: root
 
@@ -30,7 +32,7 @@ Item {
         StyledText {
             width: parent.width
 
-            text: "Manage Toolbox settings."
+            text: "Manage Toolbox settings. Goto DMS \"Settings -> Plugins\" for more configs."
 
             font.pixelSize: Theme.fontSizeSmall
             color: Theme.surfaceVariantText
@@ -67,185 +69,93 @@ Item {
 
             StyledRect {
                 width: parent.width
-                height: 80
+                height: javaGroup.implicitHeight
 
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
 
-                Row {
-                    anchors {
-                        fill: parent
-                        leftMargin: Theme.spacingM
-                        rightMargin: Theme.spacingM
-                    }
+                Column {
+                    id: javaGroup
 
-                    spacing: Theme.spacingM
+                    width: parent.width
 
-                    Column {
-                        width: parent.width - javaToggle.width - Theme.spacingM
+                    TToggleSetting {
+                        width: parent.width
 
-                        anchors.verticalCenter: parent.verticalCenter
+                        toolboxRoot: root.toolboxRoot
+                        settingKey: "showJavaPage"
 
-                        spacing: Theme.spacingXS
+                        text: "Java Switch"
+                        description: "Show the Java environment switcher in Toolbox"
 
-                        StyledText {
-                            width: parent.width
-
-                            text: "Java Switch"
-
-                            font.pixelSize: Theme.fontSizeMedium
-
-                            font.weight: Font.Medium
-                            color: Theme.surfaceText
-                        }
-
-                        StyledText {
-                            width: parent.width
-
-                            text: "Show the Java environment switcher in Toolbox"
-
-                            font.pixelSize: Theme.fontSizeSmall
-
-                            color: Theme.surfaceVariantText
-
-                            wrapMode: Text.WordWrap
-                        }
-                    }
-
-                    DankToggle {
-                        id: javaToggle
-
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        checked: toolboxRoot ? toolboxRoot.showJavaPage : true
-
-                        onToggled: isChecked => {
-                            if (!toolboxRoot)
-                                return
-
-                            toolboxRoot.saveSetting("showJavaPage", isChecked)
-                        }
+                        checked: root.toolboxRoot ? root.toolboxRoot.showJavaPage : true
                     }
                 }
             }
 
             StyledRect {
                 width: parent.width
-                height: 80
+                height: niriShaderGroup.implicitHeight
 
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
 
-                Row {
-                    anchors {
-                        fill: parent
-                        leftMargin: Theme.spacingM
-                        rightMargin: Theme.spacingM
-                    }
+                Column {
+                    id: niriShaderGroup
 
-                    spacing: Theme.spacingM
+                    width: parent.width
 
-                    Column {
-                        width: parent.width - niriShaderToggle.width - Theme.spacingM
+                    TToggleSetting {
+                        width: parent.width
 
-                        anchors.verticalCenter: parent.verticalCenter
+                        toolboxRoot: root.toolboxRoot
+                        settingKey: "showNiriShaderPage"
 
-                        spacing: Theme.spacingXS
+                        text: "Niri Shader"
+                        description: "Show the Niri shader manager in Toolbox"
 
-                        StyledText {
-                            width: parent.width
-
-                            text: "Niri Shader"
-
-                            font.pixelSize: Theme.fontSizeMedium
-
-                            font.weight: Font.Medium
-                            color: Theme.surfaceText
-                        }
-
-                        StyledText {
-                            width: parent.width
-
-                            text: "Show the Niri shader manager in Toolbox"
-
-                            font.pixelSize: Theme.fontSizeSmall
-
-                            color: Theme.surfaceVariantText
-
-                            wrapMode: Text.WordWrap
-                        }
-                    }
-
-                    DankToggle {
-                        id: niriShaderToggle
-
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        checked: toolboxRoot ? toolboxRoot.showNiriShaderPage : true
-
-                        onToggled: isChecked => {
-                            if (!toolboxRoot)
-                                return
-
-                            toolboxRoot.saveSetting("showNiriShaderPage", isChecked)
-                        }
+                        checked: root.toolboxRoot ? root.toolboxRoot.showNiriShaderPage : true
                     }
                 }
             }
 
             StyledRect {
                 width: parent.width
-                height: 80
+                height: dynamicIslandGroup.implicitHeight
 
                 radius: Theme.cornerRadius
                 color: Theme.surfaceContainerHigh
 
-                Row {
-                    anchors {
-                        fill: parent
-                        leftMargin: Theme.spacingM
-                        rightMargin: Theme.spacingM
+                Column {
+                    id: dynamicIslandGroup
+
+                    width: parent.width
+
+                    TToggleSetting {
+                        width: parent.width
+
+                        toolboxRoot: root.toolboxRoot
+                        settingKey: "dynamicIslandEnabled"
+
+                        text: "Dynamic Island Overlay"
+                        description: "Show the top-center Dynamic Island overlay"
+
+                        checked: root.toolboxRoot ? root.toolboxRoot.dynamicIslandEnabled : true
                     }
 
-                    spacing: Theme.spacingM
+                    TToggleSetting {
+                        width: parent.width
 
-                    Column {
-                        width: parent.width - dynamicIslandToggle.width - Theme.spacingM
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: Theme.spacingXS
+                        toolboxRoot: root.toolboxRoot
+                        settingKey: "showDynamicIslandPage"
 
-                        StyledText {
-                            width: parent.width
-                            text: "Dynamic Island"
-                            font.pixelSize: Theme.fontSizeMedium
-                            font.weight: Font.Medium
-                            color: Theme.surfaceText
-                        }
+                        text: "Dynamic Island"
+                        description: "Show the Dynamic Island settings page"
 
-                        StyledText {
-                            width: parent.width
-                            text: "Show the top-center Dynamic Island overlay"
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: Theme.surfaceVariantText
-                            wrapMode: Text.WordWrap
-                        }
-                    }
-
-                    DankToggle {
-                        id: dynamicIslandToggle
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        checked: toolboxRoot ? toolboxRoot.dynamicIslandEnabled : true
-                        onToggled: isChecked => {
-                            if (!toolboxRoot)
-                                return
-
-                            toolboxRoot.saveSetting("dynamicIslandEnabled", isChecked)
-                        }
+                        checked: root.toolboxRoot ? root.toolboxRoot.showDynamicIslandPage : true
                     }
                 }
             }
-
         }
     }
 }
