@@ -28,8 +28,8 @@
   ```
   OR
   ```bash
-  dms ipc call plugins reload toolbox
   dms restart
+  dms ipc call plugins reload toolbox
   ```
 - Listen the errors:
   ```bash

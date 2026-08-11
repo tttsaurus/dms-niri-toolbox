@@ -9,7 +9,14 @@ Item {
     property var toolboxRoot: null
 
     Column {
-        anchors.fill: parent
+        id: header
+        
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: parent.top
+        }
+
         spacing: Theme.spacingM
 
         StyledText {

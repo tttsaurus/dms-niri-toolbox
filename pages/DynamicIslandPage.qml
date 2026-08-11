@@ -1,7 +1,10 @@
 import QtQuick
+import QtQuick.Controls
 
 import qs.Common
 import qs.Widgets
+
+import "../components"
 
 Item {
     id: root
@@ -9,7 +12,14 @@ Item {
     property var toolboxRoot: null
 
     Column {
-        anchors.fill: parent
+        id: header
+
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: parent.top
+        }
+
         spacing: Theme.spacingM
 
         StyledText {
@@ -30,19 +40,87 @@ Item {
 
             wrapMode: Text.WordWrap
         }
+    }
 
-        StyledRect {
-            width: parent.width
-            height: 96
+    Flickable {
+        id: settingsFlickable
 
-            radius: Theme.cornerRadius
-            color: Theme.surfaceContainerHigh
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: header.bottom
+            bottom: parent.bottom
 
-            StyledText {
-                anchors.centerIn: parent
+            topMargin: Theme.spacingL
+        }
 
-                text: "Dynamic Island controls will go here"
+        clip: true
+
+        contentWidth: width
+        contentHeight: settingsColumn.implicitHeight
+
+        flickableDirection: Flickable.VerticalFlick
+        boundsBehavior: Flickable.StopAtBounds
+
+        ScrollBar.vertical: ScrollBar {
+            id: verticalScrollBar
+
+            width: Theme.spacingS
+
+            policy: ScrollBar.AsNeeded
+            hoverEnabled: true
+
+            opacity: active || hovered || pressed ? 1 : 0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 260
+                }
+            }
+
+            contentItem: Rectangle {
+                implicitWidth: verticalScrollBar.width
+                radius: width / 2
                 color: Theme.surfaceVariantText
+            }
+
+            background: Item {}
+        }
+
+        Column {
+            id: settingsColumn
+
+            width: settingsFlickable.width
+            spacing: Theme.spacingM
+
+            StyledRect {
+                width: parent.width
+                height: dynamicIslandGroup.implicitHeight
+
+                radius: Theme.cornerRadius
+                color: Theme.surfaceContainerHigh
+
+                Column {
+                    id: dynamicIslandGroup
+
+                    width: parent.width
+
+                    TSliderSetting {
+                        toolboxRoot: root.toolboxRoot
+                        settingKey: "islandReservedWidth"
+
+                        text: "Island Reserved Width"
+                        description: "Reserved center space for Dynamic Island"
+
+                        value: root.toolboxRoot ? root.toolboxRoot.islandReservedWidth : 168
+
+                        minimum: 80
+                        maximum: 200
+
+                        integer: true
+                        unit: "px"
+                    }
+                }
             }
         }
     }

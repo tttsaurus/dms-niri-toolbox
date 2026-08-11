@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 
 import qs.Common
 import qs.Widgets
@@ -60,6 +61,31 @@ Item {
 
         flickableDirection: Flickable.VerticalFlick
         boundsBehavior: Flickable.StopAtBounds
+
+        ScrollBar.vertical: ScrollBar {
+            id: verticalScrollBar
+
+            width: Theme.spacingS
+
+            policy: ScrollBar.AsNeeded
+            hoverEnabled: true
+
+            opacity: active || hovered || pressed ? 1 : 0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: 260
+                }
+            }
+
+            contentItem: Rectangle {
+                implicitWidth: verticalScrollBar.width
+                radius: width / 2
+                color: Theme.surfaceVariantText
+            }
+
+            background: Item {}
+        }
 
         Column {
             id: settingsColumn
@@ -132,8 +158,6 @@ Item {
                     width: parent.width
 
                     TToggleSetting {
-                        width: parent.width
-
                         toolboxRoot: root.toolboxRoot
                         settingKey: "dynamicIslandEnabled"
 
@@ -144,8 +168,6 @@ Item {
                     }
 
                     TToggleSetting {
-                        width: parent.width
-
                         toolboxRoot: root.toolboxRoot
                         settingKey: "showDynamicIslandPage"
 
