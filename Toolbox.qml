@@ -12,7 +12,7 @@ PluginComponent {
     layerNamespacePlugin: "toolbox"
 
     readonly property bool displaysText: pluginData.displaysPillText ?? true
-    readonly property string displayText: pluginData.pillDisplayText ?? "Toolbox"
+    readonly property string displayText: pluginData.pillDisplayText || "Toolbox"
 
     readonly property bool showSettingsPage: pluginData.showSettingsPage ?? true
     readonly property bool showJavaPage: pluginData.showJavaPage ?? true
