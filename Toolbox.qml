@@ -19,6 +19,7 @@ PluginComponent {
     property bool showNiriShaderPage: pluginData.showNiriShaderPage !== undefined ? pluginData.showNiriShaderPage : true
 
     property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled !== undefined ? pluginData.dynamicIslandEnabled : true
+    property int islandReservedWidth: 168
 
     property string selectedPage: ""
 
@@ -107,7 +108,7 @@ PluginComponent {
         )
     }
 
-    property int islandReservedWidth: 168
+    readonly property string barCenteringMode: SettingsData.centeringMode
 
     function mappedCenterWidgets() {
         const configured = root.barConfig?.centerWidgets || []
@@ -131,24 +132,103 @@ PluginComponent {
         })
     }
 
+    function makeIslandSpacer(id, size, enabled) {
+        return {
+            widgetId: "spacer",
+            id: id,
+            enabled: enabled,
+            size: size
+        }
+    }
+
+    function applyIndexIslandReservation(widgets) {
+        const count = widgets.length
+        const middle = Math.floor(count / 2)
+
+        if (count % 2 === 0) {
+            /*
+            * A B C D
+            *     ↓
+            * A B [   spacer   ] C D
+            *
+            * Final count is odd, spacer becomes the exact
+            * center widget in DMS index mode.
+            */
+            widgets.splice(
+                middle,
+                0,
+                makeIslandSpacer(
+                    "__toolbox_island_reservation",
+                    root.islandReservedWidth,
+                    true
+                )
+            )
+
+            return widgets
+        }
+
+        /*
+        * A B C
+        *
+        * We need an even configured count with the two
+        * half-spacers as the exact middle pair:
+        *
+        * X A [left][right] B C
+        *
+        * X is disabled and only fixes model parity.
+        */
+        const halfWidth = root.islandReservedWidth / 2
+
+        widgets.unshift(
+            makeIslandSpacer(
+                "__toolbox_island_parity_sentinel",
+                1,
+                false
+            )
+        )
+
+        widgets.splice(
+            middle + 1,
+            0,
+            makeIslandSpacer(
+                "__toolbox_island_reservation_left",
+                halfWidth,
+                true
+            ),
+            makeIslandSpacer(
+                "__toolbox_island_reservation_right",
+                halfWidth,
+                true
+            )
+        )
+
+        return widgets
+    }
+
+    function applyGeometricIslandReservation(widgets) {
+        widgets.splice(
+            Math.floor(widgets.length / 2),
+            0,
+            makeIslandSpacer(
+                "__toolbox_island_reservation",
+                root.islandReservedWidth,
+                true
+            )
+        )
+
+        return widgets
+    }
+
     function centerWidgetsWithIslandReservation() {
         const widgets = mappedCenterWidgets()
 
         if (!root.dynamicIslandEnabled)
             return widgets
 
-        const spacer = {
-            widgetId: "spacer",
-            id: "__toolbox_island_reservation",
-            enabled: true,
-            size: root.islandReservedWidth
-        }
-
-        widgets.splice(
-            Math.floor(widgets.length / 2),
-            0,
-            spacer
-        )
+        if (root.barCenteringMode === "index")
+            return applyIndexIslandReservation(widgets)
+        else if (root.barCenteringMode === "geometric")
+            return applyGeometricIslandReservation(widgets)
 
         return widgets
     }
