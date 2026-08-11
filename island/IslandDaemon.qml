@@ -8,10 +8,10 @@ PluginComponent {
 
     readonly property bool islandEnabled: pluginData.dynamicIslandEnabled !== undefined ? pluginData.dynamicIslandEnabled : true
 
-    property int barGeometryRevision: 0
+    property int barAnchorRevision: 0
 
-    function barGeometryFor(screenName) {
-        barGeometryRevision
+    function barAnchorFor(screenName) {
+        barAnchorRevision
 
         if (!pluginService || !pluginId)
             return null
@@ -19,7 +19,7 @@ PluginComponent {
         const all =
             pluginService.getGlobalVar(
                 pluginId,
-                "barGeometry",
+                "barAnchorGeometry",
                 {}
             )
 
@@ -30,8 +30,8 @@ PluginComponent {
         target: root.pluginService
 
         function onGlobalVarChanged(changedPluginId, varName) {
-            if (changedPluginId === root.pluginId && varName === "barGeometry") {
-                root.barGeometryRevision++
+            if (changedPluginId === root.pluginId && varName === "barAnchorGeometry") {
+                root.barAnchorRevision++
             }
         }
     }
@@ -39,6 +39,8 @@ PluginComponent {
     Variants {
         model: root.islandEnabled ? Quickshell.screens : []
 
-        IslandWindow {}
+        IslandWindow {
+            barAnchor: root.barAnchorFor(modelData.name)
+        }
     }
 }

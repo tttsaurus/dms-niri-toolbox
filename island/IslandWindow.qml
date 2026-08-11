@@ -7,6 +7,10 @@ PanelWindow {
 
     required property var modelData
 
+    property var barAnchor: null
+
+    readonly property real barCenterY: barAnchor && barAnchor.centerY !== undefined ? barAnchor.centerY : 24
+
     screen: modelData
 
     anchors {
@@ -16,7 +20,9 @@ PanelWindow {
     }
 
     implicitHeight: 460
+
     color: "transparent"
+
     exclusionMode: ExclusionMode.Ignore
     focusable: false
 
@@ -28,17 +34,11 @@ PanelWindow {
         item: island
     }
 
-    property var barGeometry: null
-
-    readonly property real barCenterY:
-        barGeometry
-            ? barGeometry.centerY
-            : 24
-
     DynamicIsland {
         id: island
 
         anchors.horizontalCenter: parent.horizontalCenter
-        y: window.barCenterY - height / 2
+
+        y: root.barCenterY - compactHeight / 2
     }
 }

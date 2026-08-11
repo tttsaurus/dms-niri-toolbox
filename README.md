@@ -16,17 +16,23 @@
 - Goto DMS `Settings -> Plugins` and turn on the plugin
 - Goto DMS `Dank Bar -> Widgets` and add the plugin
 
-Check plugin status:
-```bash
-dms ipc call plugins list
-```
+**Tips**:
 
-Reload `toolbox`:
-```bash
-dms ipc call plugins reload toolbox
-```
-OR
-```bash
-dms ipc call plugins reload toolbox
-dms restart
-```
+- Check the plugin status:
+  ```bash
+  dms ipc call plugins list
+  ```
+- Reload `toolbox`:
+  ```bash
+  dms ipc call plugins reload toolbox
+  ```
+  OR
+  ```bash
+  dms ipc call plugins reload toolbox
+  dms restart
+  ```
+- Listen the errors:
+  ```bash
+  journalctl --user -u dms -f
+  ```
+  And then run `reload`

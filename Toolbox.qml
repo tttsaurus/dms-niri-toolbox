@@ -65,77 +65,110 @@ PluginComponent {
         )
     }
 
-    function publishBarGeometry() {
-        if (!pluginService || !pluginId)
-            return
-
-        if (!parentScreen || !blurBarWindow)
+    function publishBarAnchor(item) {
+        if (!pluginService || !pluginId || !parentScreen || !item)
             return
 
         const screenName = parentScreen.name
-
-        const spacing = blurBarWindow.effectiveSpacing !== undefined ? blurBarWindow.effectiveSpacing : barSpacing
-        const thickness = blurBarWindow.effectiveBarThickness !== undefined ? blurBarWindow.effectiveBarThickness : barThickness
-        const position = barConfig && barConfig.position !== undefined ? barConfig.position : 0
-
-        let centerY = 0
-
-        switch (position) {
-            case 0: // top
-                centerY = spacing + thickness / 2
-                break
-
-            case 1: // bottom
-                centerY = parentScreen.height - spacing - thickness / 2
-                break
-        }
+        const topLeft = item.mapToItem(null, 0, 0)
+        const center = item.mapToItem(
+            null,
+            item.width / 2,
+            item.height / 2
+        )
 
         const current = pluginService.getGlobalVar(
             pluginId,
-            "barGeometry",
+            "barAnchorGeometry",
             {}
         )
-
         const next = Object.assign({}, current)
 
         next[screenName] = {
-            position: position,
-            spacing: spacing,
-            thickness: thickness,
-            centerY: centerY
+            edge: axis?.edge ?? "top",
+
+            x: topLeft.x,
+            y: topLeft.y,
+            centerX: center.x,
+            centerY: center.y,
+
+            contentWidth: item.width,
+            contentHeight: item.height,
+            widgetThickness: widgetThickness,
+            barThickness: blurBarWindow?.effectiveBarThickness ?? barThickness,
+            barSpacing: blurBarWindow?.effectiveSpacing ?? barSpacing,
+            revealed: blurBarWindow?.barRevealed ?? true
         }
 
         pluginService.setGlobalVar(
             pluginId,
-            "barGeometry",
+            "barAnchorGeometry",
             next
         )
     }
 
-    onParentScreenChanged: publishBarGeometry()
-    onBarThicknessChanged: publishBarGeometry()
-    onBarConfigChanged: publishBarGeometry()
-
-    Component.onCompleted: {
-        ensureValidPage()
-        publishBarGeometry()
-    }
-
-    Connections {
-        target: root.blurBarWindow
-
-        function onEffectiveSpacingChanged() {
-            root.publishBarGeometry()
-        }
-
-        function onEffectiveBarThicknessChanged() {
-            root.publishBarGeometry()
-        }
-    }
+    Component.onCompleted: ensureValidPage()
 
     horizontalBarPill: Component {
         Row {
+            id: barAnchor
+
             spacing: Theme.spacingS
+
+            function publish() {
+                root.publishBarAnchor(barAnchor)
+            }
+
+            function publishLater() {
+                Qt.callLater(publish)
+            }
+
+            Component.onCompleted: publishLater()
+
+            onXChanged: publishLater()
+            onYChanged: publishLater()
+            onWidthChanged: publishLater()
+            onHeightChanged: publishLater()
+
+            Connections {
+                target: root
+
+                function onParentScreenChanged() {
+                    barAnchor.publishLater()
+                }
+
+                function onBarThicknessChanged() {
+                    barAnchor.publishLater()
+                }
+
+                function onWidgetThicknessChanged() {
+                    barAnchor.publishLater()
+                }
+
+                function onBarConfigChanged() {
+                    barAnchor.publishLater()
+                }
+
+                function onAxisChanged() {
+                    barAnchor.publishLater()
+                }
+            }
+
+            Connections {
+                target: root.blurBarWindow
+
+                function onEffectiveSpacingChanged() {
+                    barAnchor.publish()
+                }
+
+                function onEffectiveBarThicknessChanged() {
+                    barAnchor.publish()
+                }
+
+                function onBarRevealedChanged() {
+                    barAnchor.publishLater()
+                }
+            }
 
             DankIcon {
                 name: "widgets"
