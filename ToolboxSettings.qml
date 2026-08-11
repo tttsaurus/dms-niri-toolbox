@@ -129,4 +129,17 @@ PluginSettings {
 
         defaultValue: false
     }
+
+    SliderSetting {
+        settingKey: "islandReservedWidth"
+
+        label: "Island Reserved Width"
+        description: "Reserved center space for Dynamic Island"
+
+        defaultValue: 168
+
+        minimum: 80
+        maximum: 200
+        unit: "px"
+    }
 }

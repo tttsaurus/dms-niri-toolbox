@@ -6,7 +6,7 @@ import qs.Modules.Plugins
 PluginComponent {
     id: root
 
-    readonly property bool islandEnabled: pluginData.dynamicIslandEnabled !== undefined ? pluginData.dynamicIslandEnabled : true
+    readonly property bool islandEnabled: pluginData.dynamicIslandEnabled ?? true
 
     property int barAnchorRevision: 0
 

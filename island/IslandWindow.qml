@@ -9,7 +9,7 @@ PanelWindow {
 
     property var barAnchor: null
 
-    readonly property real barCenterY: barAnchor && barAnchor.centerY !== undefined ? barAnchor.centerY : 24
+    readonly property real barCenterY: barAnchor && barAnchor.centerY != null ? barAnchor.centerY : 24
 
     screen: modelData
 
