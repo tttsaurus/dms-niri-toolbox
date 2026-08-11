@@ -13,6 +13,7 @@ PanelWindow {
 
     property var barAnchor: null
 
+    readonly property bool islandExpanded: root.controller.mode === "expanded"
     readonly property real barSpacing: barAnchor?.barSpacing ?? 4
     readonly property real barThickness: barAnchor?.barThickness ?? 36
 
@@ -35,8 +36,27 @@ PanelWindow {
     WlrLayershell.namespace: "dms:plugins:toolbox-island"
     WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
 
-    mask: Region {
+    Region {
+        id: islandMask
         item: island
+    }
+
+    Region {
+        id: expandedMask
+        item: root.contentItem
+    }
+
+    mask: root.islandExpanded ? expandedMask : islandMask
+
+    MouseArea {
+        id: dismissArea
+
+        anchors.fill: parent
+
+        visible: root.islandExpanded
+        enabled: root.islandExpanded
+
+        onClicked: root.controller.clear()
     }
 
     View.IslandPresenter {
