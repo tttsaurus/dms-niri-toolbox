@@ -1,28 +1,16 @@
 import QtQuick
 
-import qs.Common
-import qs.Widgets
-
-Rectangle {
+Item {
     id: root
 
-    property bool expanded: false
+    required property real targetWidth
+    required property real targetHeight
 
-    required property real compactWidth
-    required property real compactHeight
+    property alias contentItem: contentLayer
 
-    readonly property real expandedWidth: 620
-    readonly property real expandedHeight: 360
-
-    width: expanded ? expandedWidth : compactWidth
-    height: expanded ? expandedHeight : compactHeight
-
-    radius: expanded ? 28 : compactHeight / 2
-    color: Theme.surfaceContainerHighest
+    width: targetWidth
+    height: targetHeight
     clip: true
-
-    border.width: 1
-    border.color: Theme.outlineStrong
 
     Behavior on width {
         NumberAnimation {
@@ -38,160 +26,36 @@ Rectangle {
         }
     }
 
-    Behavior on radius {
-        NumberAnimation {
-            duration: 240
-            easing.type: Easing.OutQuart
-        }
-    }
-
-    Item {
-        id: compactContent
+    // keep a visible fallback until the local .qsb has been baked, 
+    // and also if the scene graph backend rejects the ShaderEffect for any reason
+    Rectangle {
         anchors.fill: parent
 
-        opacity: root.expanded ? 0 : 1
-        visible: opacity > 0.01
+        visible: squircleEffect.status !== ShaderEffect.Compiled
+        color: "black"
+        radius: Math.min(width, height) * 0.35
+    }
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 100
-            }
-        }
+    ShaderEffect {
+        id: squircleEffect
 
-        Row {
-            anchors.centerIn: parent
-            spacing: Theme.spacingS
+        anchors.fill: parent
 
-            DankIcon {
-                name: "widgets"
-                size: Theme.iconSize - 2
-                color: Theme.primary
-                anchors.verticalCenter: parent.verticalCenter
-            }
+        property vector2d sizePx: Qt.vector2d(
+            Math.max(width, 1),
+            Math.max(height, 1)
+        )
 
-            StyledText {
-                text: "Toolbox"
-                font.pixelSize: Theme.fontSizeSmall
-                font.weight: Font.Medium
-                color: Theme.surfaceText
-                anchors.verticalCenter: parent.verticalCenter
-            }
-        }
+        fragmentShader: Qt.resolvedUrl("shaders/island_squircle.frag.qsb")
 
-        MouseArea {
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: root.expanded = true
+        onStatusChanged: {
+            if (status === ShaderEffect.Error)
+                console.warn("[DynamicIsland] squircle shader error: ", log)
         }
     }
 
     Item {
-        id: expandedContent
-
-        anchors {
-            fill: parent
-            margins: Theme.spacingL
-        }
-
-        opacity: root.expanded ? 1 : 0
-        visible: opacity > 0.01
-
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 160
-            }
-        }
-
-        Item {
-            id: expandedHeader
-
-            anchors {
-                left: parent.left
-                right: parent.right
-                top: parent.top
-            }
-
-            height: 36
-
-            StyledText {
-                anchors {
-                    left: parent.left
-                    verticalCenter: parent.verticalCenter
-                }
-
-                text: "Dynamic Island"
-                font.pixelSize: Theme.fontSizeLarge
-                font.weight: Font.Bold
-                color: Theme.surfaceText
-            }
-
-            Rectangle {
-                width: 30
-                height: 30
-                radius: 15
-
-                anchors {
-                    right: parent.right
-                    verticalCenter: parent.verticalCenter
-                }
-
-                color: closeArea.containsMouse ? Theme.surfaceContainerHigh : "transparent"
-
-                DankIcon {
-                    anchors.centerIn: parent
-                    name: "close"
-                    size: Theme.iconSize - 4
-                    color: Theme.surfaceText
-                }
-
-                MouseArea {
-                    id: closeArea
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.expanded = false
-                }
-            }
-        }
-
-        StyledRect {
-            anchors {
-                left: parent.left
-                right: parent.right
-                top: expandedHeader.bottom
-                bottom: parent.bottom
-                topMargin: Theme.spacingM
-            }
-
-            radius: Theme.cornerRadius
-            color: Theme.surfaceContainerHigh
-
-            Column {
-                anchors.centerIn: parent
-                spacing: Theme.spacingS
-
-                DankIcon {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    name: "widgets"
-                    size: Theme.iconSize * 2
-                    color: Theme.primary
-                }
-
-                StyledText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Island content goes here"
-                    font.pixelSize: Theme.fontSizeMedium
-                    color: Theme.surfaceText
-                }
-
-                StyledText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "Persistent overlay surface · compact ↔ expanded"
-                    font.pixelSize: Theme.fontSizeSmall
-                    color: Theme.surfaceVariantText
-                }
-            }
-        }
+        id: contentLayer
+        anchors.fill: parent
     }
 }

@@ -11,6 +11,13 @@
   ln -s path/to/DankMaterialShell/quickshell/dms-plugins/dms-niri-toolbox/ ~/.config/DankMaterialShell/plugins/Toolbox
   ```
 - ```bash
+  sudo dnf install qt6-qtshadertools
+  ```
+  ```bash
+  cd path/to/DankMaterialShell/quickshell/dms-plugins/dms-niri-toolbox/
+  ./scripts/build-island-shaders.sh
+  ```
+- ```bash
   dms restart
   ```
 - Goto DMS `Settings -> Plugins` and turn on the plugin
@@ -36,3 +43,7 @@
   journalctl --user -u dms -f
   ```
   And then run `reload`
+- Compile shaders:
+  ```bash
+  ./scripts/build-island-shaders.sh
+  ```
