@@ -107,6 +107,62 @@ PluginComponent {
         )
     }
 
+    property int islandReservedWidth: 168
+
+    function mappedCenterWidgets() {
+        const configured = root.barConfig?.centerWidgets || []
+
+        return configured.map((w, index) => {
+            if (typeof w === "string") {
+                return {
+                    widgetId: w,
+                    id: w + "_" + index,
+                    enabled: true
+                }
+            }
+
+            const obj = Object.assign({}, w)
+
+            obj.widgetId = w.id || w.widgetId
+            obj.id = (w.id || w.widgetId) + "_" + index
+            obj.enabled = w.enabled !== false
+
+            return obj
+        })
+    }
+
+    function centerWidgetsWithIslandReservation() {
+        const widgets = mappedCenterWidgets()
+
+        if (!root.dynamicIslandEnabled)
+            return widgets
+
+        const spacer = {
+            widgetId: "spacer",
+            id: "__toolbox_island_reservation",
+            enabled: true,
+            size: root.islandReservedWidth
+        }
+
+        widgets.splice(
+            Math.floor(widgets.length / 2),
+            0,
+            spacer
+        )
+
+        return widgets
+    }
+
+    Binding {
+        target: root.blurBarWindow ? root.blurBarWindow.centerWidgetsModel : null
+
+        property: "values"
+
+        when: root.blurBarWindow !== null
+
+        value: root.centerWidgetsWithIslandReservation()
+    }
+
     Component.onCompleted: ensureValidPage()
 
     horizontalBarPill: Component {
