@@ -20,9 +20,25 @@ PluginComponent {
     readonly property bool showDynamicIslandPage: pluginData.showDynamicIslandPage ?? true
 
     readonly property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? true
+    
     readonly property int islandReservedWidth: {
         const value = Number(pluginData.islandReservedWidth ?? 168)
         return Number.isFinite(value) ? Math.floor(value) : 168
+    }
+
+    readonly property int islandCompactRadius: {
+        const value = Number(pluginData.islandCompactRadius ?? 18)
+        return Number.isFinite(value) ? Math.floor(value) : 18
+    }
+
+    readonly property int islandPeekRadius: {
+        const value = Number(pluginData.islandPeekRadius ?? 18)
+        return Number.isFinite(value) ? Math.floor(value) : 18
+    }
+
+    readonly property int islandExpandedRadius: {
+        const value = Number(pluginData.islandExpandedRadius ?? 28)
+        return Number.isFinite(value) ? Math.floor(value) : 28
     }
 
     property string selectedPage: ""

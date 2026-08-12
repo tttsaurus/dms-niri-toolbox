@@ -120,6 +120,54 @@ Item {
                         integer: true
                         unit: "px"
                     }
+
+                    TSliderSetting {
+                        toolboxRoot: root.toolboxRoot
+                        settingKey: "islandCompactRadius"
+
+                        text: "Island Compact Mode Radius"
+                        description: "Radius for the compact Dynamic Island"
+
+                        value: root.toolboxRoot ? root.toolboxRoot.islandCompactRadius : 18
+
+                        minimum: 1
+                        maximum: 30
+
+                        integer: true
+                        unit: "px"
+                    }
+
+                    TSliderSetting {
+                        toolboxRoot: root.toolboxRoot
+                        settingKey: "islandPeekRadius"
+
+                        text: "Island Peek Mode Radius"
+                        description: "Radius for the peek Dynamic Island"
+
+                        value: root.toolboxRoot ? root.toolboxRoot.islandPeekRadius : 18
+
+                        minimum: 1
+                        maximum: 30
+
+                        integer: true
+                        unit: "px"
+                    }
+
+                    TSliderSetting {
+                        toolboxRoot: root.toolboxRoot
+                        settingKey: "islandExpandedRadius"
+
+                        text: "Island Expanded Mode Radius"
+                        description: "Radius for the expanded Dynamic Island"
+
+                        value: root.toolboxRoot ? root.toolboxRoot.islandExpandedRadius : 128
+
+                        minimum: 10
+                        maximum: 300
+
+                        integer: true
+                        unit: "px"
+                    }
                 }
             }
         }
