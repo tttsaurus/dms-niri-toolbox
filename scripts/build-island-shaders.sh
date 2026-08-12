@@ -4,8 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 
-SOURCE="${REPO_ROOT}/island/shaders/island_squircle.frag"
-OUTPUT="${REPO_ROOT}/island/shaders/island_squircle.frag.qsb"
+SOURCE="${REPO_ROOT}/island/shaders/dynamic_island.frag"
+OUTPUT="${REPO_ROOT}/island/shaders/dynamic_island.frag.qsb"
 
 if [[ -n "${QSB:-}" ]]; then
     QSB_BIN="${QSB}"

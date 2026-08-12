@@ -75,11 +75,11 @@ Item {
 
         property real radiusPx: root.animatedRadius
 
-        fragmentShader: Qt.resolvedUrl("shaders/island_squircle.frag.qsb")
+        fragmentShader: Qt.resolvedUrl("shaders/dynamic_island.frag.qsb")
 
         onStatusChanged: {
             if (status === ShaderEffect.Error)
-                console.warn("[DynamicIsland] squircle shader error: ", log)
+                console.warn("[DynamicIsland] shader error: ", log)
         }
     }
 
