@@ -454,7 +454,7 @@ Future responsibilities may include mostly visual effects.
 After shader changes:
 
 ```bash
-./scripts/build-island-shaders.sh
+./dev_scripts/build_shaders.sh 
 ```
 
 Shader work should stay in:

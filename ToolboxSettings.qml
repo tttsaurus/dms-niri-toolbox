@@ -142,4 +142,43 @@ PluginSettings {
         maximum: 200
         unit: "px"
     }
+
+    SliderSetting {
+        settingKey: "islandCompactRadius"
+
+        label: "Island Compact Mode Radius"
+        description: "Radius for the compact Dynamic Island"
+
+        defaultValue: 18
+
+        minimum: 1
+        maximum: 30
+        unit: "px"
+    }
+
+    SliderSetting {
+        settingKey: "islandPeekRadius"
+
+        label: "Island Peek Mode Radius"
+        description: "Radius for the peek Dynamic Island"
+
+        defaultValue: 18
+
+        minimum: 1
+        maximum: 30
+        unit: "px"
+    }
+
+    SliderSetting {
+        settingKey: "islandExpandedRadius"
+
+        label: "Island Expanded Mode Radius"
+        description: "Radius for the expanded Dynamic Island"
+
+        defaultValue: 28
+
+        minimum: 10
+        maximum: 300
+        unit: "px"
+    }
 }

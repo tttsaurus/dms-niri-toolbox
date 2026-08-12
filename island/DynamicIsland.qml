@@ -9,23 +9,42 @@ Item {
 
     property alias contentItem: contentLayer
 
-    readonly property real targetRadius: {
+    readonly property int islandCompactRadius: {
+        const value = Number(pluginData.islandCompactRadius ?? 18)
+        return Number.isFinite(value) ? Math.floor(value) : 18
+    }
+
+    readonly property int islandPeekRadius: {
+        const value = Number(pluginData.islandPeekRadius ?? 18)
+        return Number.isFinite(value) ? Math.floor(value) : 18
+    }
+
+    readonly property int islandExpandedRadius: {
+        const value = Number(pluginData.islandExpandedRadius ?? 28)
+        return Number.isFinite(value) ? Math.floor(value) : 28
+    }
+
+    function clamp(value, minValue, maxValue) {
+        return Math.max(minValue, Math.min(maxValue, value))
+    }
+
+    readonly property real _targetRadius: {
         switch (root.mode) {
             case "compact":
-                return 18
+                return clamp(root.islandCompactRadius, 0, Math.min(targetWidth, targetHeight) / 2)
 
             case "peek":
-                return 18
+                return clamp(root.islandPeekRadius, 0, Math.min(targetWidth, targetHeight) / 2)
 
             case "expanded":
-                return 28
+                return clamp(root.islandExpandedRadius, 0, Math.min(targetWidth, targetHeight) / 2)
 
             default:
                 return 18
         }
     }
 
-    property real animatedRadius: root.targetRadius
+    property real animatedRadius: root._targetRadius
 
     Behavior on animatedRadius {
         NumberAnimation {
@@ -57,23 +76,23 @@ Item {
     Rectangle {
         anchors.fill: parent
 
-        visible: squircleEffect.status !== ShaderEffect.Compiled
+        visible: shaderEffect.status !== ShaderEffect.Compiled
 
         color: "black"
         radius: root.animatedRadius
     }
 
     ShaderEffect {
-        id: squircleEffect
+        id: shaderEffect
 
         anchors.fill: parent
 
-        property vector2d sizePx: Qt.vector2d(
+        property vector2d sizeDip: Qt.vector2d(
             Math.max(width, 1),
             Math.max(height, 1)
         )
 
-        property real radiusPx: root.animatedRadius
+        property real radiusDip: root.animatedRadius
 
         fragmentShader: Qt.resolvedUrl("shaders/dynamic_island.frag.qsb")
 

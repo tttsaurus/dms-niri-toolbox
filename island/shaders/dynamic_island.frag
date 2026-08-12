@@ -7,8 +7,8 @@ layout(std140, binding = 0) uniform buf {
     mat4 qt_Matrix;
     float qt_Opacity;
 
-    vec2 sizePx;
-    float radiusPx;
+    vec2 sizeDip;
+    float radiusDip;
 } ubuf;
 
 float sdfSquircle(vec2 p, vec2 halfSize, float radius) {
@@ -29,11 +29,11 @@ float sdfSquircle(vec2 p, vec2 halfSize, float radius) {
 }
 
 void main() {
-    vec2 size = max(ubuf.sizePx, vec2(1.0));
+    vec2 size = max(ubuf.sizeDip, vec2(1.0));
     vec2 halfSize = size * 0.5;
     vec2 p = (qt_TexCoord0 - vec2(0.5)) * size;
 
-    float distanceToEdge = sdfSquircle(p, halfSize, ubuf.radiusPx);
+    float distanceToEdge = sdfSquircle(p, halfSize, ubuf.radiusDip);
     float aa = max(fwidth(distanceToEdge), 0.75);
     float coverage = 1.0 - smoothstep(-aa, aa, distanceToEdge);
 
