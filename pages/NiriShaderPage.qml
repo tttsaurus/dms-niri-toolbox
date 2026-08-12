@@ -3,6 +3,8 @@ import QtQuick
 import qs.Common
 import qs.Widgets
 
+import "../components"
+
 Item {
     id: root
 
@@ -37,6 +39,21 @@ Item {
 
             wrapMode: Text.WordWrap
         }
+    }
+
+    ScrollableColumn {
+        id: settingsColumn
+
+        anchors {
+            left: parent.left
+            right: parent.right
+            top: header.bottom
+            bottom: parent.bottom
+
+            topMargin: Theme.spacingL
+        }
+
+        spacing: Theme.spacingM
 
         StyledRect {
             width: parent.width

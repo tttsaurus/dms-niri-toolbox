@@ -18,9 +18,11 @@
   },
 
   "settings": "./ToolboxSettings.qml",
+
   "permissions": [
     "settings_read",
-    "settings_write"
+    "settings_write",
+    "process"
   ],
 
   "requires_dms": ">=1.5.0"
