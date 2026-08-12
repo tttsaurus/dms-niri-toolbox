@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 
 import qs.Common
 import qs.Widgets
@@ -42,8 +41,8 @@ Item {
         }
     }
 
-    Flickable {
-        id: settingsFlickable
+    ScrollableColumn {
+        id: settingsColumn
 
         anchors {
             left: parent.left
@@ -54,120 +53,82 @@ Item {
             topMargin: Theme.spacingL
         }
 
-        clip: true
+        spacing: Theme.spacingM
 
-        contentWidth: width
-        contentHeight: settingsColumn.implicitHeight
+        StyledRect {
+            width: parent.width
+            height: dynamicIslandGroup.implicitHeight
 
-        flickableDirection: Flickable.VerticalFlick
-        boundsBehavior: Flickable.StopAtBounds
+            radius: Theme.cornerRadius
+            color: Theme.surfaceContainerHigh
 
-        ScrollBar.vertical: ScrollBar {
-            id: verticalScrollBar
+            Column {
+                id: dynamicIslandGroup
 
-            width: Theme.spacingS
-
-            policy: ScrollBar.AsNeeded
-            hoverEnabled: true
-
-            opacity: active || hovered || pressed ? 1 : 0
-
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: 260
-                }
-            }
-
-            contentItem: Rectangle {
-                implicitWidth: verticalScrollBar.width
-                radius: width / 2
-                color: Theme.surfaceVariantText
-            }
-
-            background: Item {}
-        }
-
-        Column {
-            id: settingsColumn
-
-            width: settingsFlickable.width
-            spacing: Theme.spacingM
-
-            StyledRect {
                 width: parent.width
-                height: dynamicIslandGroup.implicitHeight
 
-                radius: Theme.cornerRadius
-                color: Theme.surfaceContainerHigh
+                TSliderSetting {
+                    toolboxRoot: root.toolboxRoot
+                    settingKey: "islandReservedWidth"
 
-                Column {
-                    id: dynamicIslandGroup
+                    text: "Island Reserved Width"
+                    description: "Reserved center space for Dynamic Island"
 
-                    width: parent.width
+                    value: root.toolboxRoot ? root.toolboxRoot.islandReservedWidth : 168
 
-                    TSliderSetting {
-                        toolboxRoot: root.toolboxRoot
-                        settingKey: "islandReservedWidth"
+                    minimum: 80
+                    maximum: 200
 
-                        text: "Island Reserved Width"
-                        description: "Reserved center space for Dynamic Island"
+                    integer: true
+                    unit: "px"
+                }
 
-                        value: root.toolboxRoot ? root.toolboxRoot.islandReservedWidth : 168
+                TSliderSetting {
+                    toolboxRoot: root.toolboxRoot
+                    settingKey: "islandCompactRadius"
 
-                        minimum: 80
-                        maximum: 200
+                    text: "Island Compact Mode Radius"
+                    description: "Radius for the compact Dynamic Island"
 
-                        integer: true
-                        unit: "px"
-                    }
+                    value: root.toolboxRoot ? root.toolboxRoot.islandCompactRadius : 18
 
-                    TSliderSetting {
-                        toolboxRoot: root.toolboxRoot
-                        settingKey: "islandCompactRadius"
+                    minimum: 1
+                    maximum: 30
 
-                        text: "Island Compact Mode Radius"
-                        description: "Radius for the compact Dynamic Island"
+                    integer: true
+                    unit: "px"
+                }
 
-                        value: root.toolboxRoot ? root.toolboxRoot.islandCompactRadius : 18
+                TSliderSetting {
+                    toolboxRoot: root.toolboxRoot
+                    settingKey: "islandPeekRadius"
 
-                        minimum: 1
-                        maximum: 30
+                    text: "Island Peek Mode Radius"
+                    description: "Radius for the peek Dynamic Island"
 
-                        integer: true
-                        unit: "px"
-                    }
+                    value: root.toolboxRoot ? root.toolboxRoot.islandPeekRadius : 18
 
-                    TSliderSetting {
-                        toolboxRoot: root.toolboxRoot
-                        settingKey: "islandPeekRadius"
+                    minimum: 1
+                    maximum: 30
 
-                        text: "Island Peek Mode Radius"
-                        description: "Radius for the peek Dynamic Island"
+                    integer: true
+                    unit: "px"
+                }
 
-                        value: root.toolboxRoot ? root.toolboxRoot.islandPeekRadius : 18
+                TSliderSetting {
+                    toolboxRoot: root.toolboxRoot
+                    settingKey: "islandExpandedRadius"
 
-                        minimum: 1
-                        maximum: 30
+                    text: "Island Expanded Mode Radius"
+                    description: "Radius for the expanded Dynamic Island"
 
-                        integer: true
-                        unit: "px"
-                    }
+                    value: root.toolboxRoot ? root.toolboxRoot.islandExpandedRadius : 128
 
-                    TSliderSetting {
-                        toolboxRoot: root.toolboxRoot
-                        settingKey: "islandExpandedRadius"
+                    minimum: 10
+                    maximum: 300
 
-                        text: "Island Expanded Mode Radius"
-                        description: "Radius for the expanded Dynamic Island"
-
-                        value: root.toolboxRoot ? root.toolboxRoot.islandExpandedRadius : 128
-
-                        minimum: 10
-                        maximum: 300
-
-                        integer: true
-                        unit: "px"
-                    }
+                    integer: true
+                    unit: "px"
                 }
             }
         }

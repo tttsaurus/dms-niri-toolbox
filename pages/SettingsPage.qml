@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 
 import qs.Common
 import qs.Widgets
@@ -42,8 +41,8 @@ Item {
         }
     }
 
-    Flickable {
-        id: settingsFlickable
+    ScrollableColumn {
+        id: settingsColumn
 
         anchors {
             left: parent.left
@@ -54,128 +53,90 @@ Item {
             topMargin: Theme.spacingL
         }
 
-        clip: true
+        spacing: Theme.spacingM
 
-        contentWidth: width
-        contentHeight: settingsColumn.implicitHeight
+        StyledRect {
+            width: parent.width
+            height: javaGroup.implicitHeight
 
-        flickableDirection: Flickable.VerticalFlick
-        boundsBehavior: Flickable.StopAtBounds
+            radius: Theme.cornerRadius
+            color: Theme.surfaceContainerHigh
 
-        ScrollBar.vertical: ScrollBar {
-            id: verticalScrollBar
+            Column {
+                id: javaGroup
 
-            width: Theme.spacingS
+                width: parent.width
 
-            policy: ScrollBar.AsNeeded
-            hoverEnabled: true
+                TToggleSetting {
+                    width: parent.width
 
-            opacity: active || hovered || pressed ? 1 : 0
+                    toolboxRoot: root.toolboxRoot
+                    settingKey: "showJavaPage"
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: 260
+                    text: "Java Switch"
+                    description: "Show the Java environment switcher in Toolbox"
+
+                    checked: root.toolboxRoot ? root.toolboxRoot.showJavaPage : true
                 }
             }
-
-            contentItem: Rectangle {
-                implicitWidth: verticalScrollBar.width
-                radius: width / 2
-                color: Theme.surfaceVariantText
-            }
-
-            background: Item {}
         }
 
-        Column {
-            id: settingsColumn
+        StyledRect {
+            width: parent.width
+            height: niriShaderGroup.implicitHeight
 
-            width: settingsFlickable.width
-            spacing: Theme.spacingM
+            radius: Theme.cornerRadius
+            color: Theme.surfaceContainerHigh
 
-            StyledRect {
+            Column {
+                id: niriShaderGroup
+
                 width: parent.width
-                height: javaGroup.implicitHeight
 
-                radius: Theme.cornerRadius
-                color: Theme.surfaceContainerHigh
-
-                Column {
-                    id: javaGroup
-
+                TToggleSetting {
                     width: parent.width
 
-                    TToggleSetting {
-                        width: parent.width
+                    toolboxRoot: root.toolboxRoot
+                    settingKey: "showNiriShaderPage"
 
-                        toolboxRoot: root.toolboxRoot
-                        settingKey: "showJavaPage"
+                    text: "Niri Shader"
+                    description: "Show the Niri shader manager in Toolbox"
 
-                        text: "Java Switch"
-                        description: "Show the Java environment switcher in Toolbox"
-
-                        checked: root.toolboxRoot ? root.toolboxRoot.showJavaPage : true
-                    }
+                    checked: root.toolboxRoot ? root.toolboxRoot.showNiriShaderPage : true
                 }
             }
+        }
 
-            StyledRect {
+        StyledRect {
+            width: parent.width
+            height: dynamicIslandGroup.implicitHeight
+
+            radius: Theme.cornerRadius
+            color: Theme.surfaceContainerHigh
+
+            Column {
+                id: dynamicIslandGroup
+
                 width: parent.width
-                height: niriShaderGroup.implicitHeight
 
-                radius: Theme.cornerRadius
-                color: Theme.surfaceContainerHigh
+                TToggleSetting {
+                    toolboxRoot: root.toolboxRoot
+                    settingKey: "dynamicIslandEnabled"
 
-                Column {
-                    id: niriShaderGroup
+                    text: "Dynamic Island Overlay"
+                    description: "Show the top-center Dynamic Island overlay"
 
-                    width: parent.width
-
-                    TToggleSetting {
-                        width: parent.width
-
-                        toolboxRoot: root.toolboxRoot
-                        settingKey: "showNiriShaderPage"
-
-                        text: "Niri Shader"
-                        description: "Show the Niri shader manager in Toolbox"
-
-                        checked: root.toolboxRoot ? root.toolboxRoot.showNiriShaderPage : true
-                    }
+                    checked: root.toolboxRoot ? root.toolboxRoot.dynamicIslandEnabled : true
                 }
-            }
 
-            StyledRect {
-                width: parent.width
-                height: dynamicIslandGroup.implicitHeight
+                TToggleSetting {
+                    toolboxRoot: root.toolboxRoot
+                    settingKey: "showDynamicIslandPage"
 
-                radius: Theme.cornerRadius
-                color: Theme.surfaceContainerHigh
+                    text: "Dynamic Island"
+                    description: "Show the Dynamic Island settings page"
 
-                Column {
-                    id: dynamicIslandGroup
-
-                    width: parent.width
-
-                    TToggleSetting {
-                        toolboxRoot: root.toolboxRoot
-                        settingKey: "dynamicIslandEnabled"
-
-                        text: "Dynamic Island Overlay"
-                        description: "Show the top-center Dynamic Island overlay"
-
-                        checked: root.toolboxRoot ? root.toolboxRoot.dynamicIslandEnabled : true
-                    }
-
-                    TToggleSetting {
-                        toolboxRoot: root.toolboxRoot
-                        settingKey: "showDynamicIslandPage"
-
-                        text: "Dynamic Island"
-                        description: "Show the Dynamic Island settings page"
-
-                        checked: root.toolboxRoot ? root.toolboxRoot.showDynamicIslandPage : true
-                    }
+                    checked: root.toolboxRoot ? root.toolboxRoot.showDynamicIslandPage : true
                 }
             }
         }

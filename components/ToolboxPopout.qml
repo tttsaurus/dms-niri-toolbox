@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Controls
 
 import qs.Common
 import qs.Widgets
@@ -110,98 +109,60 @@ Item {
 
         spacing: Theme.spacingM
 
-        Flickable {
-            id: menuFlickable
+        ScrollableColumn {
+            id: menuColumn
 
             width: 180
             height: parent.height
 
-            clip: true
+            spacing: Theme.spacingS
 
-            contentWidth: width
-            contentHeight: menuColumn.implicitHeight
+            SidebarItem {
+                width: parent.width
 
-            flickableDirection: Flickable.VerticalFlick
-            boundsBehavior: Flickable.StopAtBounds
+                visible: toolboxRoot.showSettingsPage
 
-            ScrollBar.vertical: ScrollBar {
-                id: verticalScrollBar
+                iconName: "settings"
+                text: "Settings"
 
-                width: Theme.spacingS
-
-                policy: ScrollBar.AsNeeded
-                hoverEnabled: true
-
-                opacity: active || hovered || pressed ? 1 : 0
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: 260
-                    }
-                }
-
-                contentItem: Rectangle {
-                    implicitWidth: verticalScrollBar.width
-                    radius: width / 2
-                    color: Theme.surfaceVariantText
-                }
-
-                background: Item {}
+                selected: toolboxRoot.selectedPage === "settings"
+                onClicked: toolboxRoot.selectedPage = "settings"
             }
 
-            Column {
-                id: menuColumn
+            SidebarItem {
+                width: parent.width
 
-                width: menuFlickable.width
-                spacing: Theme.spacingS
+                visible: toolboxRoot.showJavaPage
 
-                SidebarItem {
-                    width: parent.width
+                iconName: "coffee"
+                text: "Java Switch"
 
-                    visible: toolboxRoot.showSettingsPage
+                selected: toolboxRoot.selectedPage === "java"
+                onClicked: toolboxRoot.selectedPage = "java"
+            }
 
-                    iconName: "settings"
-                    text: "Settings"
+            SidebarItem {
+                width: parent.width
 
-                    selected: toolboxRoot.selectedPage === "settings"
-                    onClicked: toolboxRoot.selectedPage = "settings"
-                }
+                visible: toolboxRoot.showNiriShaderPage
 
-                SidebarItem {
-                    width: parent.width
+                iconName: "animation"
+                text: "Niri Shader"
 
-                    visible: toolboxRoot.showJavaPage
+                selected: toolboxRoot.selectedPage === "niriShader"
+                onClicked: toolboxRoot.selectedPage = "niriShader"
+            }
 
-                    iconName: "coffee"
-                    text: "Java Switch"
+            SidebarItem {
+                width: parent.width
 
-                    selected: toolboxRoot.selectedPage === "java"
-                    onClicked: toolboxRoot.selectedPage = "java"
-                }
+                visible: toolboxRoot.showDynamicIslandPage
 
-                SidebarItem {
-                    width: parent.width
+                iconName: "dialogs"
+                text: "Dynamic Island"
 
-                    visible: toolboxRoot.showNiriShaderPage
-
-                    iconName: "animation"
-                    text: "Niri Shader"
-
-                    selected: toolboxRoot.selectedPage === "niriShader"
-                    onClicked: toolboxRoot.selectedPage = "niriShader"
-                }
-
-                SidebarItem {
-                    width: parent.width
-
-                    visible: toolboxRoot.showDynamicIslandPage
-
-                    iconName: "dialogs"
-                    text: "Dynamic Island"
-
-                    selected: toolboxRoot.selectedPage === "dynamicIsland"
-                    onClicked: toolboxRoot.selectedPage = "dynamicIsland"
-                }
+                selected: toolboxRoot.selectedPage === "dynamicIsland"
+                onClicked: toolboxRoot.selectedPage = "dynamicIsland"
             }
         }
 
