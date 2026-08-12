@@ -9,6 +9,12 @@ Item {
 
     property int reservedWidth: 168
 
+    property bool reservationBindingEnabled: true
+
+    Component.onDestruction: {
+        root.reservationBindingEnabled = false
+    }
+
     readonly property string centeringMode: SettingsData.centeringMode
 
     function mappedCenterWidgets() {
@@ -131,9 +137,6 @@ Item {
     function projectedWidgets() {
         const widgets = mappedCenterWidgets()
 
-        if (!toolboxRoot.dynamicIslandEnabled)
-            return widgets
-
         switch (root.centeringMode) {
             case "index":
                 return applyIndexReservation(widgets)
@@ -147,11 +150,13 @@ Item {
     }
 
     Binding {
+        id: reservationBinding
+
         target: root.toolboxRoot.blurBarWindow ? root.toolboxRoot.blurBarWindow.centerWidgetsModel : null
 
         property: "values"
 
-        when: root.toolboxRoot.blurBarWindow !== null
+        when: root.reservationBindingEnabled && root.toolboxRoot.dynamicIslandEnabled && root.toolboxRoot.blurBarWindow !== null
 
         value: root.projectedWidgets()
     }
