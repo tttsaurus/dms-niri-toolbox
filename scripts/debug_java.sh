@@ -105,6 +105,7 @@ print_full_file() {
 
 print_separator "BASHRC JAVA CONFIG"
 
+# shellcheck disable=SC2016
 print_file_matches \
     "$BASHRC" \
     'JAVA_HOME|\$JAVA_HOME/bin|DMS Niri Toolbox Java Switch'

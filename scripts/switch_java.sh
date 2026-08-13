@@ -56,6 +56,7 @@ awk \
     echo
     echo "$BEGIN_MARKER"
     printf 'export JAVA_HOME=%q\n' "$JDK_PATH"
+    # shellcheck disable=SC2016
     echo 'export PATH="$JAVA_HOME/bin:$PATH"'
     echo "$END_MARKER"
 } >> "$tmp"
