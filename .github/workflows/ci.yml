@@ -95,12 +95,22 @@ jobs:
         uses: DeterminateSystems/nix-installer-action@main
 
 
-      - name: Install Weston
+      - name: Install runtime dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
             weston \
-            dbus
+            dbus-daemon \
+            dbus-session-bus-common
+
+      
+      - name: Check D-Bus
+        run: |
+          command -v dbus-run-session
+          command -v dbus-daemon
+
+          ls -l /usr/bin/dbus-run-session
+          ls -l /usr/share/dbus-1/session.conf
 
 
       - name: Start headless Wayland
@@ -170,7 +180,7 @@ jobs:
 
           rm -f quickshell/.qmlls.ini
 
-          nix develop --command dbus-run-session -- bash -lc '
+          /usr/bin/dbus-run-session -- nix develop --command bash -lc '
             set -euo pipefail
 
             echo "Starting Quickshell..."
