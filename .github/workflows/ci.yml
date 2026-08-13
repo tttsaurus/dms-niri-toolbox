@@ -138,41 +138,108 @@ jobs:
           exit 1
 
 
-      - name: Generate Quickshell tooling VFS
+      - name: Prepare DMS development environment
         working-directory: dms
-
         shell: bash
-
         run: |
           set -euo pipefail
 
-          set +e
+          nix develop --command bash -lc '
+            set -euo pipefail
 
-          timeout 15s \
-            nix develop \
-            --command \
-            bash -c '
-              qs -p "$PWD/quickshell"
-            ' \
-            > "$RUNNER_TEMP/quickshell.log" \
-            2>&1
+            echo "Quickshell:"
+            command -v qs
+            qs --version || true
 
-          set -e
-
-
-          echo "----- Quickshell log -----"
-          cat "$RUNNER_TEMP/quickshell.log" || true
+            echo
+            echo "qmllint:"
+            command -v qmllint || \
+            command -v qmllint6 || \
+            command -v qmllint-qt6
+          '
 
 
-          echo
-          echo "----- .qmlls.ini -----"
+      - name: Generate Quickshell tooling VFS
+        working-directory: dms
+        shell: bash
+        run: |
+          set -euo pipefail
 
-          if [[ ! -f quickshell/.qmlls.ini ]]; then
-            echo "Quickshell did not generate .qmlls.ini"
-            exit 1
-          fi
+          QS_LOG="$RUNNER_TEMP/quickshell.log"
+          export QS_LOG
 
-          cat quickshell/.qmlls.ini
+          rm -f quickshell/.qmlls.ini
+
+          nix develop --command dbus-run-session -- bash -lc '
+            set -euo pipefail
+
+            echo "Starting Quickshell..."
+
+            qs -p "$PWD/quickshell" \
+              > "$QS_LOG" 2>&1 &
+
+            QS_PID=$!
+
+            cleanup() {
+              kill "$QS_PID" 2>/dev/null || true
+              wait "$QS_PID" 2>/dev/null || true
+            }
+
+            trap cleanup EXIT
+
+            READY=false
+
+            for _ in $(seq 1 200); do
+              if ! kill -0 "$QS_PID" 2>/dev/null; then
+                echo "Quickshell exited before tooling VFS was generated."
+                echo
+                echo "----- Quickshell log -----"
+                cat "$QS_LOG" || true
+                exit 1
+              fi
+
+              if [[ -f quickshell/.qmlls.ini ]]; then
+                BUILD_DIR="$(
+                  sed -n "s/^buildDir=//p" \
+                    quickshell/.qmlls.ini |
+                    head -n 1
+                )"
+
+                BUILD_DIR="${BUILD_DIR#\"}"
+                BUILD_DIR="${BUILD_DIR%\"}"
+
+                if [[ -n "$BUILD_DIR" ]] &&
+                  [[ -d "$BUILD_DIR" ]] &&
+                  [[ -f "$BUILD_DIR/qs/qmldir" ]]; then
+
+                  READY=true
+                  break
+                fi
+              fi
+
+              sleep 0.25
+            done
+
+            if [[ "$READY" != true ]]; then
+              echo "Timed out waiting for Quickshell tooling VFS."
+              echo
+
+              echo "----- .qmlls.ini -----"
+              cat quickshell/.qmlls.ini 2>/dev/null || \
+                echo "[not generated]"
+
+              echo
+              echo "----- Quickshell log -----"
+              cat "$QS_LOG" || true
+
+              exit 1
+            fi
+
+            echo "Quickshell tooling VFS is ready."
+            echo
+            echo "----- .qmlls.ini -----"
+            cat quickshell/.qmlls.ini
+          '
 
 
       - name: Lint Toolbox against DMS
