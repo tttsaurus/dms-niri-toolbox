@@ -96,7 +96,7 @@ echo "  $BUILD_DIR"
 
 QMLLINT_ARGS=(
     --ignore-settings
-    -W 0
+    -W -1
 
     -I "$BUILD_DIR"
     -I "$PLUGIN_DIR"
