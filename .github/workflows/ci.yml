@@ -1,0 +1,203 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+
+  workflow_dispatch:
+
+
+jobs:
+  static-checks:
+    name: Static Checks
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Toolbox
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            jq \
+            shellcheck
+
+      - name: Validate plugin.json
+        run: |
+          jq empty plugin.json
+
+          test "$(jq -r '.id' plugin.json)" = "toolbox"
+          test "$(jq -r '.type' plugin.json)" = "composite"
+
+          jq -e '.components.widget != null' plugin.json > /dev/null
+          jq -e '.components.daemon != null' plugin.json > /dev/null
+
+      - name: ShellCheck
+        run: |
+          if find scripts -type f -name '*.sh' | grep -q .; then
+            find scripts \
+              -type f \
+              -name '*.sh' \
+              -print0 |
+              xargs -0 shellcheck
+          fi
+
+
+  dms-compatibility:
+    name: DMS ${{ matrix.name }}
+
+    runs-on: ubuntu-latest
+
+    continue-on-error: ${{ matrix.experimental }}
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        include:
+          - name: "1.5.0 (minimum)"
+            ref: "v1.5.0"
+            experimental: false
+
+          - name: "1.5.3 (stable)"
+            ref: "v1.5.3"
+            experimental: false
+
+          - name: "master"
+            ref: "master"
+            experimental: true
+
+
+    steps:
+      - name: Checkout Toolbox
+        uses: actions/checkout@v4
+        with:
+          path: toolbox
+
+
+      - name: Checkout DMS
+        uses: actions/checkout@v4
+        with:
+          repository: AvengeMedia/DankMaterialShell
+          ref: ${{ matrix.ref }}
+
+          path: dms
+
+          submodules: recursive
+
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+
+      - name: Install Weston
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            weston \
+            dbus
+
+
+      - name: Start headless Wayland
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          export XDG_RUNTIME_DIR="$RUNNER_TEMP/xdg-runtime"
+
+          mkdir -p "$XDG_RUNTIME_DIR"
+          chmod 700 "$XDG_RUNTIME_DIR"
+
+          echo "XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR" >> "$GITHUB_ENV"
+          echo "WAYLAND_DISPLAY=wayland-ci" >> "$GITHUB_ENV"
+
+          weston \
+            --backend=headless-backend.so \
+            --socket=wayland-ci \
+            --idle-time=0 \
+            > "$RUNNER_TEMP/weston.log" 2>&1 &
+
+          echo $! > "$RUNNER_TEMP/weston.pid"
+
+          for i in {1..50}; do
+            if [[ -S "$XDG_RUNTIME_DIR/wayland-ci" ]]; then
+              exit 0
+            fi
+
+            sleep 0.1
+          done
+
+          echo "Weston failed to start"
+          cat "$RUNNER_TEMP/weston.log"
+
+          exit 1
+
+
+      - name: Generate Quickshell tooling VFS
+        working-directory: dms
+
+        shell: bash
+
+        run: |
+          set -euo pipefail
+
+          set +e
+
+          timeout 15s \
+            nix develop \
+            --command \
+            bash -c '
+              qs -p "$PWD/quickshell"
+            ' \
+            > "$RUNNER_TEMP/quickshell.log" \
+            2>&1
+
+          set -e
+
+
+          echo "----- Quickshell log -----"
+          cat "$RUNNER_TEMP/quickshell.log" || true
+
+
+          echo
+          echo "----- .qmlls.ini -----"
+
+          if [[ ! -f quickshell/.qmlls.ini ]]; then
+            echo "Quickshell did not generate .qmlls.ini"
+            exit 1
+          fi
+
+          cat quickshell/.qmlls.ini
+
+
+      - name: Lint Toolbox against DMS
+        working-directory: dms
+
+        shell: bash
+
+        run: |
+          nix develop \
+            --command \
+            bash -c '
+              ../toolbox/.github/scripts/lint_qml_with_dms.sh \
+                "$PWD" \
+                "$PWD/../toolbox"
+            '
+
+
+      - name: Upload logs on failure
+        if: failure()
+
+        uses: actions/upload-artifact@v4
+
+        with:
+          name: dms-${{ matrix.ref }}-logs
+
+          path: |
+            ${{ runner.temp }}/weston.log
+            ${{ runner.temp }}/quickshell.log
