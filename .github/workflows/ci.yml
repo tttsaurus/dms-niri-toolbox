@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout Toolbox
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install tools
         run: |
@@ -75,13 +75,13 @@ jobs:
 
     steps:
       - name: Checkout Toolbox
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           path: toolbox
 
 
       - name: Checkout DMS
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: AvengeMedia/DankMaterialShell
           ref: ${{ matrix.ref }}
@@ -270,7 +270,7 @@ jobs:
       - name: Upload logs on failure
         if: failure()
 
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
 
         with:
           name: dms-${{ matrix.ref }}-logs
