@@ -261,7 +261,7 @@ jobs:
           nix develop \
             --command \
             bash -c '
-              ../toolbox/.github/scripts/lint_qml_with_dms.sh \
+              bash ../toolbox/.github/scripts/lint_qml_with_dms.sh \
                 "$PWD" \
                 "$PWD/../toolbox"
             '
