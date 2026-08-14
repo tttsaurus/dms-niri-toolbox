@@ -53,6 +53,25 @@ Item {
         }
     }
 
+    property color islandBaseColor: "#111b34"
+    property color islandGlowColor: "#285b9c"
+    property color islandEdgeColor: "#b8d8ff"
+
+    property real shaderTime: 0
+
+    NumberAnimation {
+        target: root
+        property: "shaderTime"
+
+        from: 0
+        to: Math.PI * 2
+
+        duration: 9000
+        loops: Animation.Infinite
+
+        running: root.visible
+    }
+
     width: targetWidth
     height: targetHeight
     clip: true
@@ -93,6 +112,15 @@ Item {
         )
 
         property real radiusDip: root.animatedRadius
+
+        property color baseColor: root.islandBaseColor
+        property color glowColor: root.islandGlowColor
+        property color edgeColor: root.islandEdgeColor
+
+        property real time: root.shaderTime
+
+        property real edgeStrength: 0.82
+        property real flowStrength: 0.92
 
         fragmentShader: Qt.resolvedUrl("shaders/dynamic_island.frag.qsb")
 
