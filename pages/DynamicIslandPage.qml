@@ -58,7 +58,7 @@ Item {
         Foldout {
             width: parent.width
 
-            title: "Geometry"
+            title: "Island Geometry"
             description: "Configure the island geometry settings"
 
             TSliderSetting {
@@ -124,6 +124,108 @@ Item {
                 integer: true
                 unit: "px"
             }
+        }
+
+        Foldout {
+            width: parent.width
+
+            title: "Island Shader (Compact)"
+            description: "Configure the island shader settings (compact mode)"
+
+            TColorSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "baseColorCompact"
+
+                text: "Base Color (Compact Mode)"
+                description: "Base color of the Dynamic Island"
+
+                value: root.toolboxRoot ? root.toolboxRoot.baseColorCompact : "#111b34"
+            }
+
+            TColorSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "glowColorCompact"
+
+                text: "Glow Color (Compact Mode)"
+                description: "Color used for the interior glow and secondary highlights"
+
+                value: root.toolboxRoot ? root.toolboxRoot.glowColorCompact : "#285b9c"
+            }
+
+            TColorSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "edgeColorCompact"
+
+                text: "Edge Color (Compact Mode)"
+                description: "Color used for edge highlights and specular lighting"
+
+                value: root.toolboxRoot ? root.toolboxRoot.edgeColorCompact : "#b8d8ff"
+            }
+
+            TSliderSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "shadowWidthCompact"
+
+                text: "Shadow Width (Compact Mode)"
+                description: "Width of the outer Dynamic Island shadow"
+
+                value: root.toolboxRoot ? root.toolboxRoot.shadowWidthCompact : 4
+
+                minimum: 0
+                maximum: 5
+
+                integer: true
+                unit: "px"
+            }
+
+            TFloatSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "shadowIntensityCompact"
+
+                text: "Shadow Intensity (Compact Mode)"
+                description: "Shadow intensity from 0.0 to 0.9"
+
+                value: root.toolboxRoot ? root.toolboxRoot.shadowIntensityCompact : 0.3
+
+                minimum: 0.0
+                maximum: 0.9
+
+                placeholder: "0.0 - 0.9"
+            }
+
+            TToggleSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "interiorGlowCompact"
+
+                text: "Interior Glow (Compact Mode)"
+                description: "Enable the animated glow inside the Dynamic Island"
+
+                checked: root.toolboxRoot ? root.toolboxRoot.interiorGlowCompact : true
+            }
+
+            TToggleSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "innerEdgeHighlightCompact"
+
+                text: "Inner Edge Highlight (Compact Mode)"
+                description: "Enable the secondary highlight along the inner edge"
+
+                checked: root.toolboxRoot ? root.toolboxRoot.innerEdgeHighlightCompact : true
+            }
+        }
+
+        Foldout {
+            width: parent.width
+
+            title: "Island Shader (Peek)"
+            description: "Configure the island shader settings (peek mode)"
+        }
+
+        Foldout {
+            width: parent.width
+
+            title: "Island Shader (Expanded)"
+            description: "Configure the island shader settings (expanded mode)"
         }
     }
 }

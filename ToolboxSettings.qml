@@ -181,4 +181,78 @@ PluginSettings {
         maximum: 300
         unit: "px"
     }
+
+    SectionDivider {
+        width: parent.width
+        horizontalInset: 0
+    }
+
+    ColorSetting {
+        settingKey: "baseColorCompact"
+
+        label: "Base Color (Compact Mode)"
+        description: "Base color of the Dynamic Island"
+
+        defaultValue: "#111b34"
+    }
+
+    ColorSetting {
+        settingKey: "glowColorCompact"
+
+        label: "Glow Color (Compact Mode)"
+        description: "Color used for the interior glow and secondary highlights"
+
+        defaultValue: "#285b9c"
+    }
+
+    ColorSetting {
+        settingKey: "edgeColorCompact"
+
+        label: "Edge Color (Compact Mode)"
+        description: "Color used for edge highlights and specular lighting"
+
+        defaultValue: "#b8d8ff"
+    }
+
+    SliderSetting {
+        settingKey: "shadowWidthCompact"
+
+        label: "Shadow Width (Compact Mode)"
+        description: "Width of the outer Dynamic Island shadow"
+
+        defaultValue: 4
+
+        minimum: 0
+        maximum: 5
+
+        unit: "px"
+    }
+
+    StringSetting {
+        settingKey: "shadowIntensityCompact"
+
+        label: "Shadow Intensity (Compact Mode)"
+        description: "Shadow intensity from 0.0 to 0.9"
+
+        placeholder: "0.0 - 0.9"
+        defaultValue: "0.3"
+    }
+
+    ToggleSetting {
+        settingKey: "interiorGlowCompact"
+
+        label: "Interior Glow (Compact Mode)"
+        description: "Enable the animated glow inside the Dynamic Island"
+
+        defaultValue: true
+    }
+
+    ToggleSetting {
+        settingKey: "innerEdgeHighlightCompact"
+
+        label: "Inner Edge Highlight (Compact Mode)"
+        description: "Enable the secondary highlight along the inner edge"
+
+        defaultValue: true
+    }
 }

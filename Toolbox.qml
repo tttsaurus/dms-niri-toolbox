@@ -11,6 +11,8 @@ PluginComponent {
 
     layerNamespacePlugin: "toolbox"
 
+    // -------------------- Config Reading --------------------
+
     readonly property bool displaysText: pluginData.displaysPillText ?? true
     readonly property string displayText: pluginData.pillDisplayText || "Toolbox"
 
@@ -40,6 +42,44 @@ PluginComponent {
         const value = Number(pluginData.islandExpandedRadius ?? 28)
         return Number.isFinite(value) ? Math.floor(value) : 28
     }
+
+    // compact mode shader settings
+    
+    readonly property color baseColorCompact: {
+        const value = pluginData.baseColorCompact ?? "#111b34"
+        if (typeof value !== "string")
+            return "#111b34"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#111b34"
+    }
+
+    readonly property color glowColorCompact: {
+        const value = pluginData.glowColorCompact ?? "#285b9c"
+        if (typeof value !== "string")
+            return "#285b9c"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#285b9c"
+    }
+
+    readonly property color edgeColorCompact: {
+        const value = pluginData.edgeColorCompact ?? "#b8d8ff"
+        if (typeof value !== "string")
+            return "#b8d8ff"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#b8d8ff"
+    }
+
+    readonly property int shadowWidthCompact: {
+        const value = Number(pluginData.shadowWidthCompact ?? 4)
+        return Number.isFinite(value) ? Math.floor(value) : 4
+    }
+
+    readonly property real shadowIntensityCompact: {
+        const value = Number(pluginData.shadowIntensityCompact ?? 0.3)
+        return Math.max(0.0, Math.min(0.9, Number.isFinite(value) ? Math.floor(value) : 0.3));
+    }
+
+    readonly property bool interiorGlowCompact: pluginData.interiorGlowCompact ?? true
+    readonly property bool innerEdgeHighlightCompact: pluginData.innerEdgeHighlightCompact ?? true
+
+    // ------------------------------------------------------------
 
     property string selectedPage: ""
 
