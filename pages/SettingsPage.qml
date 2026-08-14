@@ -1,5 +1,7 @@
 import QtQuick
 
+import Quickshell
+
 import qs.Common
 import qs.Widgets
 
@@ -74,7 +76,7 @@ Item {
                     settingKey: "showJavaPage"
 
                     text: "Java Switch"
-                    description: "Show the Java environment switcher in Toolbox"
+                    description: "Show the Java environment switcher page in Toolbox"
 
                     checked: root.toolboxRoot ? root.toolboxRoot.showJavaPage : true
                 }
@@ -100,7 +102,7 @@ Item {
                     settingKey: "showNiriShaderPage"
 
                     text: "Niri Shader"
-                    description: "Show the Niri shader manager in Toolbox"
+                    description: "Show the Niri shader manager page in Toolbox"
 
                     checked: root.toolboxRoot ? root.toolboxRoot.showNiriShaderPage : true
                 }
@@ -119,6 +121,15 @@ Item {
 
                 width: parent.width
 
+                TButtonSetting {
+                    text: "Refresh Island Overlay"
+                    description: "Restart DankMaterialShell and reload all Toolbox components"
+
+                    buttonText: "Restart"
+
+                    onClicked: Quickshell.execDetached(["dms", "restart"])
+                }
+
                 TToggleSetting {
                     toolboxRoot: root.toolboxRoot
                     settingKey: "dynamicIslandEnabled"
@@ -134,7 +145,7 @@ Item {
                     settingKey: "showDynamicIslandPage"
 
                     text: "Dynamic Island"
-                    description: "Show the Dynamic Island settings page"
+                    description: "Show the Dynamic Island settings page in Toolbox"
 
                     checked: root.toolboxRoot ? root.toolboxRoot.showDynamicIslandPage : true
                 }
