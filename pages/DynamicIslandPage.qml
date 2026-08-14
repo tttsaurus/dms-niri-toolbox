@@ -55,81 +55,74 @@ Item {
 
         spacing: Theme.spacingM
 
-        StyledRect {
+        Foldout {
             width: parent.width
-            height: dynamicIslandGroup.implicitHeight
 
-            radius: Theme.cornerRadius
-            color: Theme.surfaceContainerHigh
+            title: "Geometry"
+            description: "Configure the island geometry settings"
 
-            Column {
-                id: dynamicIslandGroup
+            TSliderSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "islandReservedWidth"
 
-                width: parent.width
+                text: "Island Reserved Width"
+                description: "Reserved center space for Dynamic Island"
 
-                TSliderSetting {
-                    toolboxRoot: root.toolboxRoot
-                    settingKey: "islandReservedWidth"
+                value: root.toolboxRoot ? root.toolboxRoot.islandReservedWidth : 168
 
-                    text: "Island Reserved Width"
-                    description: "Reserved center space for Dynamic Island"
+                minimum: 80
+                maximum: 200
 
-                    value: root.toolboxRoot ? root.toolboxRoot.islandReservedWidth : 168
+                integer: true
+                unit: "px"
+            }
 
-                    minimum: 80
-                    maximum: 200
+            TSliderSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "islandCompactRadius"
 
-                    integer: true
-                    unit: "px"
-                }
+                text: "Island Compact Mode Radius"
+                description: "Radius for the compact Dynamic Island"
 
-                TSliderSetting {
-                    toolboxRoot: root.toolboxRoot
-                    settingKey: "islandCompactRadius"
+                value: root.toolboxRoot ? root.toolboxRoot.islandCompactRadius : 18
 
-                    text: "Island Compact Mode Radius"
-                    description: "Radius for the compact Dynamic Island"
+                minimum: 1
+                maximum: 30
 
-                    value: root.toolboxRoot ? root.toolboxRoot.islandCompactRadius : 18
+                integer: true
+                unit: "px"
+            }
 
-                    minimum: 1
-                    maximum: 30
+            TSliderSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "islandPeekRadius"
 
-                    integer: true
-                    unit: "px"
-                }
+                text: "Island Peek Mode Radius"
+                description: "Radius for the peek Dynamic Island"
 
-                TSliderSetting {
-                    toolboxRoot: root.toolboxRoot
-                    settingKey: "islandPeekRadius"
+                value: root.toolboxRoot ? root.toolboxRoot.islandPeekRadius : 18
 
-                    text: "Island Peek Mode Radius"
-                    description: "Radius for the peek Dynamic Island"
+                minimum: 1
+                maximum: 30
 
-                    value: root.toolboxRoot ? root.toolboxRoot.islandPeekRadius : 18
+                integer: true
+                unit: "px"
+            }
 
-                    minimum: 1
-                    maximum: 30
+            TSliderSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "islandExpandedRadius"
 
-                    integer: true
-                    unit: "px"
-                }
+                text: "Island Expanded Mode Radius"
+                description: "Radius for the expanded Dynamic Island"
 
-                TSliderSetting {
-                    toolboxRoot: root.toolboxRoot
-                    settingKey: "islandExpandedRadius"
+                value: root.toolboxRoot ? root.toolboxRoot.islandExpandedRadius : 128
 
-                    text: "Island Expanded Mode Radius"
-                    description: "Radius for the expanded Dynamic Island"
+                minimum: 10
+                maximum: 300
 
-                    value: root.toolboxRoot ? root.toolboxRoot.islandExpandedRadius : 128
-
-                    minimum: 10
-                    maximum: 300
-
-                    integer: true
-                    unit: "px"
-                }
+                integer: true
+                unit: "px"
             }
         }
     }
