@@ -24,7 +24,17 @@ layout(std140, binding = 0) uniform buf {
 
     float interiorGlow;
     float innerEdgeHighlight;
+
+    float enableSplit;
+    float splitPercentage;
 } ubuf;
+
+struct ShapeSample {
+    vec2 p;
+    vec2 halfSize;
+    float radius;
+    float distance;
+};
 
 float sdfSquircle(vec2 p, vec2 halfSize, float radius) {
     radius = clamp(radius, 0.0, min(halfSize.x, halfSize.y));
@@ -60,25 +70,92 @@ float gaussian(float value, float sharpness) {
     return exp(-value * value * sharpness);
 }
 
+ShapeSample sampleShape(vec2 p, vec2 halfSize, float radius) {
+    ShapeSample sample_;
+
+    sample_.p = p;
+    sample_.halfSize = halfSize;
+    sample_.radius = radius;
+    sample_.distance = sdfSquircle(p, halfSize, radius);
+
+    return sample_;
+}
+
+ShapeSample sampleGeometry(vec2 p, vec2 halfSize, float radius) {
+    ShapeSample wholeShape = sampleShape(p, halfSize, radius);
+
+    float splitProgress = clamp(ubuf.enableSplit, 0.0, 1.0);
+
+    if (splitProgress <= 0.0) {
+        return wholeShape;
+    }
+
+    float percentage = clamp(ubuf.splitPercentage, 0.1, 0.9);
+
+    float fullWidth = halfSize.x * 2.0;
+    float splitGap = max(ubuf.shapeInset * 2.0, 2.0);
+
+    float minPieceWidth = radius * 2.0 + 0.001;
+    float availableWidth = fullWidth - splitGap;
+
+    if (availableWidth <= minPieceWidth * 2.0) {
+        return wholeShape;
+    }
+
+    float targetLeftWidth = availableWidth * percentage;
+
+    targetLeftWidth = clamp(targetLeftWidth, minPieceWidth, availableWidth - minPieceWidth);
+
+    float targetRightWidth = availableWidth - targetLeftWidth;
+
+    float targetLeftCenter = -halfSize.x + targetLeftWidth * 0.5;
+    float targetRightCenter = halfSize.x - targetRightWidth * 0.5;
+
+    float leftWidth = mix(fullWidth, targetLeftWidth, splitProgress);
+    float rightWidth = mix(fullWidth, targetRightWidth, splitProgress);
+
+    float leftCenter = mix(0.0, targetLeftCenter, splitProgress);
+    float rightCenter = mix(0.0, targetRightCenter, splitProgress);
+
+    vec2 leftHalfSize = vec2(leftWidth * 0.5, halfSize.y);
+    vec2 rightHalfSize = vec2(rightWidth * 0.5, halfSize.y);
+
+    ShapeSample leftShape = sampleShape(p - vec2(leftCenter, 0.0), leftHalfSize, radius);
+    ShapeSample rightShape = sampleShape(p - vec2(rightCenter, 0.0), rightHalfSize, radius);
+
+    if (leftShape.distance <= rightShape.distance) {
+        return leftShape;
+    }
+
+    return rightShape;
+}
+
 void main() {
     vec2 size = max(ubuf.sizeDip, vec2(1.0));
 
-    vec2 halfSize = max(size * 0.5 - vec2(ubuf.shapeInset), vec2(1.0));
-    float radius = max(ubuf.radiusDip - ubuf.shapeInset, 0.0);
+    vec2 baseHalfSize = max(size * 0.5 - vec2(ubuf.shapeInset), vec2(1.0));
+    float baseRadius = max(ubuf.radiusDip - ubuf.shapeInset, 0.0);
 
-    vec2 p = (qt_TexCoord0 - vec2(0.5)) * size;
+    baseRadius = clamp(baseRadius, 0.0, min(baseHalfSize.x, baseHalfSize.y));
 
-    float distanceToEdge = sdfSquircle(p, halfSize, radius);
+    vec2 globalP = (qt_TexCoord0 - vec2(0.5)) * size;
+
+    ShapeSample shape = sampleGeometry(globalP, baseHalfSize, baseRadius);
+
+    vec2 p = shape.p;
+    vec2 halfSize = shape.halfSize;
+    float radius = shape.radius;
+    float distanceToEdge = shape.distance;
+
     float aa = max(fwidth(distanceToEdge), 0.001);
     float coverage = smoothstep(aa, -aa, distanceToEdge);
 
     float insideDistance = max(-distanceToEdge, 0.0);
-    float minSize = min(size.x, size.y);
 
-    vec2 centered = qt_TexCoord0 - vec2(0.5);
-    vec2 materialPos = centered;
+    vec2 localSize = halfSize * 2.0;
+    float minSize = min(localSize.x, localSize.y);
 
-    materialPos.x *= size.x / max(size.y, 1.0);
+    vec2 materialPos = p / max(localSize.y, 1.0);
 
     float centerDistance = length(materialPos);
     float centerGlow = 1.0 - smoothstep(0.05, 0.85, centerDistance);
