@@ -145,6 +145,8 @@ Item {
         property real flowStrength: 0.92
 
         property real shapeInset: 5.0
+        property real shadowWidth: 4.0
+        property real shadowIntensity: 0.3
 
         property real interiorGlow: root.animatedIslandInteriorGlow
         property real innerEdgeHighlight: root.animatedIslandInnerEdgeHighlight

@@ -19,6 +19,8 @@ layout(std140, binding = 0) uniform buf {
     float flowStrength;
 
     float shapeInset;
+    float shadowWidth;
+    float shadowIntensity;
 
     float interiorGlow;
     float innerEdgeHighlight;
@@ -69,11 +71,6 @@ void main() {
     float distanceToEdge = sdfSquircle(p, halfSize, radius);
     float aa = max(fwidth(distanceToEdge), 0.001);
     float coverage = smoothstep(aa, -aa, distanceToEdge);
-
-    if (coverage <= 0.0) {
-        fragColor = vec4(0.0);
-        return;
-    }
 
     float insideDistance = max(-distanceToEdge, 0.0);
     float minSize = min(size.x, size.y);
@@ -148,5 +145,23 @@ void main() {
 
     float alpha = coverage * ubuf.qt_Opacity;
 
-    fragColor = vec4(max(color, vec3(0.0)) * alpha, alpha);
+    float maxShadowWidth = max(ubuf.shapeInset - 0.001, 0.0);
+    float shadowWidth = clamp(ubuf.shadowWidth, 0.0, maxShadowWidth);
+
+    float shadowAlpha = 0.0;
+
+    if (shadowWidth > 0.0) {
+        float outsideDistance = max(distanceToEdge, 0.0);
+
+        float shadowBand = 1.0 - smoothstep(0.0, shadowWidth, outsideDistance);
+        float outsideMask = 1.0 - coverage;
+        float shadowSideMask = smoothstep(-0.55, 0.0, normal2D.y);
+
+        shadowAlpha = shadowBand * outsideMask * shadowSideMask * clamp(ubuf.shadowIntensity, 0.0, 0.9) * ubuf.qt_Opacity;
+    }
+
+    vec4 body = vec4(max(color, vec3(0.0)) * alpha, alpha);
+    vec4 shadow = vec4(0.0, 0.0, 0.0, shadowAlpha);
+
+    fragColor = body + shadow * (1.0 - body.a);
 }
