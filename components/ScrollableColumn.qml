@@ -10,16 +10,21 @@ Flickable {
     property alias spacing: contentColumn.spacing
 
     property bool wheelActive: false
-    property real scrollSensitivity: 1.5
 
-    property real maxScrollAcceleration: 5.5
+    property real scrollSensitivity: 1.5
+    property real scrollTrailResponse: 0.34
+    property real maxScrollTrailDistance: 150.0
+
+    property bool touchpadScrolling: false
+    property real touchpadSensitivity: 1.5
+    property real touchpadTrailResponse: 0.5
+    property real touchpadMaxTrailDistance: 80.0
+
+    property real maxScrollAcceleration: 3.0
     property real scrollAcceleration: 1.0
     property real scrollSequenceStart: 0
     property real lastWheelTime: 0
     property int lastWheelDirection: 0
-
-    property real scrollTrailResponse: 0.24
-    property real maxScrollTrailDistance: 240.0
 
     property real wheelTargetY: 0.0
     property bool wheelAnimating: false
@@ -40,9 +45,11 @@ Flickable {
         acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
 
         onWheel: event => {
+            const isTouchpad = event.pixelDelta.y !== 0
+
             let delta
 
-            if (event.pixelDelta.y !== 0)
+            if (isTouchpad)
                 delta = event.pixelDelta.y
             else
                 delta = event.angleDelta.y / 120.0 * 48.0
@@ -54,47 +61,61 @@ Flickable {
             const direction = delta > 0 ? 1 : -1
             const elapsed = now - root.lastWheelTime
 
-            const newSequence = elapsed >= 180 || direction !== root.lastWheelDirection
+            root.touchpadScrolling = isTouchpad
 
-            if (newSequence) {
-                root.scrollSequenceStart = now
-                root.wheelTargetY = root.contentY
-            } else if (!root.wheelAnimating) {
-                root.wheelTargetY = root.contentY
+            if (isTouchpad) {
+                scrollAccelerationResetTimer.stop()
+
+                root.scrollAcceleration = 1.0
+
+                if (!root.wheelAnimating)
+                    root.wheelTargetY = root.contentY
+            } else {
+                const newSequence = elapsed >= 180 || direction !== root.lastWheelDirection
+
+                if (newSequence) {
+                    root.scrollSequenceStart = now
+                    root.wheelTargetY = root.contentY
+                } else if (!root.wheelAnimating) {
+                    root.wheelTargetY = root.contentY
+                }
+
+                const sequenceDuration = now - root.scrollSequenceStart
+
+                root.scrollAcceleration = Math.min(root.maxScrollAcceleration, 1.0 + sequenceDuration / 650.0)
             }
-
-            const sequenceDuration = now - root.scrollSequenceStart
-
-            root.scrollAcceleration = Math.min(root.maxScrollAcceleration, 1.0 + sequenceDuration / 650.0)
 
             root.lastWheelTime = now
             root.lastWheelDirection = direction
 
-            const effectiveDelta = delta * root.scrollSensitivity * root.scrollAcceleration
+            const sensitivity = isTouchpad ? root.touchpadSensitivity : root.scrollSensitivity
+
+            const effectiveDelta = delta * sensitivity * root.scrollAcceleration
 
             const maxY = Math.max(0, root.contentHeight - root.height)
 
             let targetY = root.wheelTargetY - effectiveDelta
 
-            targetY = Math.max(root.contentY - root.maxScrollTrailDistance, Math.min(root.contentY + root.maxScrollTrailDistance,targetY))
+            const maxTrailDistance = isTouchpad ? root.touchpadMaxTrailDistance : root.maxScrollTrailDistance
+
+            targetY = Math.max(root.contentY - maxTrailDistance, Math.min(root.contentY + maxTrailDistance, targetY))
 
             root.wheelTargetY = Math.max(0, Math.min(maxY, targetY))
-
             root.wheelAnimating = true
             root.wheelActive = true
 
             wheelActiveTimer.restart()
-            scrollAccelerationResetTimer.restart()
+
+            if (!isTouchpad)
+                scrollAccelerationResetTimer.restart()
 
             event.accepted = true
         }
     }
 
-    Timer {
-        id: wheelAnimationTimer
+    FrameAnimation {
+        id: wheelAnimation
 
-        interval: 16
-        repeat: true
         running: root.wheelAnimating
 
         onTriggered: {
@@ -104,13 +125,17 @@ Flickable {
 
             const distance = root.wheelTargetY - root.contentY
 
-            if (Math.abs(distance) <= 0.15) {
+            const stopThreshold = root.touchpadScrolling ? 0.15 : 0.75
+
+            if (Math.abs(distance) <= stopThreshold) {
                 root.contentY = root.wheelTargetY
                 root.wheelAnimating = false
                 return
             }
 
-            const response = 1.0 - Math.pow(1.0 - root.scrollTrailResponse, interval / 16.6667)
+            const trailResponse = root.touchpadScrolling ? root.touchpadTrailResponse : root.scrollTrailResponse
+
+            const response = 1.0 - Math.pow(1.0 - trailResponse, frameTime * 60.0)
 
             root.contentY += distance * response
         }
