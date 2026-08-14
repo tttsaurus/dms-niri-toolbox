@@ -17,6 +17,11 @@ layout(std140, binding = 0) uniform buf {
     float time;
     float edgeStrength;
     float flowStrength;
+
+    float shapeInset;
+
+    float interiorGlow;
+    float innerEdgeHighlight;
 } ubuf;
 
 float sdfSquircle(vec2 p, vec2 halfSize, float radius) {
@@ -56,10 +61,8 @@ float gaussian(float value, float sharpness) {
 void main() {
     vec2 size = max(ubuf.sizeDip, vec2(1.0));
 
-    const float shapeInset = 0.0;
-
-    vec2 halfSize = max(size * 0.5 - vec2(shapeInset), vec2(1.0));
-    float radius = max(ubuf.radiusDip - shapeInset, 0.0);
+    vec2 halfSize = max(size * 0.5 - vec2(ubuf.shapeInset), vec2(1.0));
+    float radius = max(ubuf.radiusDip - ubuf.shapeInset, 0.0);
 
     vec2 p = (qt_TexCoord0 - vec2(0.5)) * size;
 
@@ -85,7 +88,8 @@ void main() {
 
     vec3 color = ubuf.baseColor.rgb;
 
-    color *= 0.88 + centerGlow * 0.12;
+    float bodyGlowFactor = 0.88 + centerGlow * 0.12;
+    color *= mix(1.0, bodyGlowFactor, ubuf.interiorGlow);
 
     vec2 glowCenterA = vec2(0.42 * cos(ubuf.time), 0.23 * sin(ubuf.time * 2.0));
     vec2 deltaA = materialPos - glowCenterA;
@@ -102,7 +106,7 @@ void main() {
 
     float interiorLight = glowA * 0.55 + glowB * 0.28 + flowingBand * 0.42;
 
-    color += ubuf.glowColor.rgb * interiorLight * 0.20 * ubuf.flowStrength;
+    color += ubuf.glowColor.rgb * interiorLight * 0.20 * ubuf.flowStrength * ubuf.interiorGlow;
 
     float rimWidth = clamp(minSize * 0.025, 1.5, 4.0);
     float bevelWidth = clamp(minSize * 0.11, 4.0, 14.0);
@@ -136,11 +140,11 @@ void main() {
     float rimLight = rimMask * (0.08 + keyRim * 1.25 + oppositeRim * 0.42);
 
     color += ubuf.edgeColor.rgb * rimLight * ubuf.edgeStrength;
-    color += ubuf.edgeColor.rgb * specular * 0.65 * ubuf.edgeStrength;
+    color += ubuf.edgeColor.rgb * specular * 0.65 * ubuf.edgeStrength * mix(rimMask, 1.0, ubuf.innerEdgeHighlight);
 
     float innerRim = bevelMask * (1.0 - rimMask) * diffuse;
 
-    color += ubuf.glowColor.rgb * innerRim * 0.055;
+    color += ubuf.glowColor.rgb * innerRim * 0.055 * ubuf.innerEdgeHighlight;
 
     float alpha = coverage * ubuf.qt_Opacity;
 

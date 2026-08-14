@@ -53,6 +53,28 @@ Item {
         }
     }
 
+    property bool islandInteriorGlow: true
+
+    property real animatedIslandInteriorGlow: root.islandInteriorGlow ? 1.0 : 0.0
+
+    Behavior on animatedIslandInteriorGlow {
+        NumberAnimation {
+            duration: 200
+            easing.type: Easing.OutQuart
+        }
+    }
+
+    property bool islandInnerEdgeHighlight: true
+
+    property real animatedIslandInnerEdgeHighlight: root.islandInnerEdgeHighlight ? 1.0 : 0.0
+
+    Behavior on animatedIslandInnerEdgeHighlight {
+        NumberAnimation {
+            duration: 200
+            easing.type: Easing.OutQuart
+        }
+    }
+
     property color islandBaseColor: "#111b34"
     property color islandGlowColor: "#285b9c"
     property color islandEdgeColor: "#b8d8ff"
@@ -121,6 +143,11 @@ Item {
 
         property real edgeStrength: 0.82
         property real flowStrength: 0.92
+
+        property real shapeInset: 5.0
+
+        property real interiorGlow: root.animatedIslandInteriorGlow
+        property real innerEdgeHighlight: root.animatedIslandInnerEdgeHighlight
 
         fragmentShader: Qt.resolvedUrl("shaders/dynamic_island.frag.qsb")
 
