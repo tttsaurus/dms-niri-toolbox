@@ -21,7 +21,7 @@ PluginComponent {
     readonly property bool showNiriShaderPage: pluginData.showNiriShaderPage ?? true
     readonly property bool showDynamicIslandPage: pluginData.showDynamicIslandPage ?? true
 
-    readonly property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? true
+    readonly property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? false
     
     readonly property int islandReservedWidth: {
         const value = Number(pluginData.islandReservedWidth ?? 168)
@@ -46,24 +46,24 @@ PluginComponent {
     // compact mode shader settings
     
     readonly property color baseColorCompact: {
-        const value = pluginData.baseColorCompact ?? "#111b34"
+        const value = pluginData.baseColorCompact ?? "#000000"
         if (typeof value !== "string")
-            return "#111b34"
-        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#111b34"
+            return "#000000"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#000000"
     }
 
     readonly property color glowColorCompact: {
-        const value = pluginData.glowColorCompact ?? "#285b9c"
+        const value = pluginData.glowColorCompact ?? "#1b3554"
         if (typeof value !== "string")
-            return "#285b9c"
-        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#285b9c"
+            return "#1b3554"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#1b3554"
     }
 
     readonly property color edgeColorCompact: {
-        const value = pluginData.edgeColorCompact ?? "#b8d8ff"
+        const value = pluginData.edgeColorCompact ?? "#9fb8db"
         if (typeof value !== "string")
-            return "#b8d8ff"
-        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#b8d8ff"
+            return "#9fb8db"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#9fb8db"
     }
 
     readonly property int shadowWidthCompact: {
@@ -78,6 +78,7 @@ PluginComponent {
 
     readonly property bool interiorGlowCompact: pluginData.interiorGlowCompact ?? true
     readonly property bool innerEdgeHighlightCompact: pluginData.innerEdgeHighlightCompact ?? true
+    readonly property bool followDmsColorSettingsCompact: pluginData.followDmsColorSettingsCompact ?? false
 
     // ------------------------------------------------------------
 

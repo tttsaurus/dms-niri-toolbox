@@ -9,7 +9,7 @@ import "core" as Core
 PluginComponent {
     id: root
 
-    readonly property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? true
+    readonly property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? false
     readonly property int islandReservedWidth: {
         const value = Number(pluginData.islandReservedWidth ?? 168)
         return Number.isFinite(value) ? Math.floor(value) : 168

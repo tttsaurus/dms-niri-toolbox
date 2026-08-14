@@ -137,7 +137,7 @@ Item {
                     text: "Dynamic Island Overlay"
                     description: "Show the top-center Dynamic Island overlay"
 
-                    checked: root.toolboxRoot ? root.toolboxRoot.dynamicIslandEnabled : true
+                    checked: root.toolboxRoot ? root.toolboxRoot.dynamicIslandEnabled : false
                 }
 
                 TToggleSetting {

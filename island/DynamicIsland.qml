@@ -75,9 +75,9 @@ Item {
         }
     }
 
-    property color islandBaseColor: "#111b34"
-    property color islandGlowColor: "#285b9c"
-    property color islandEdgeColor: "#b8d8ff"
+    property color islandBaseColor: "#000000"
+    property color islandGlowColor: "#1b3554"
+    property color islandEdgeColor: "#9fb8db"
 
     property real shaderTime: 0
 

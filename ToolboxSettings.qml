@@ -193,7 +193,7 @@ PluginSettings {
         label: "Base Color (Compact Mode)"
         description: "Base color of the Dynamic Island"
 
-        defaultValue: "#111b34"
+        defaultValue: "#000000"
     }
 
     ColorSetting {
@@ -202,7 +202,7 @@ PluginSettings {
         label: "Glow Color (Compact Mode)"
         description: "Color used for the interior glow and secondary highlights"
 
-        defaultValue: "#285b9c"
+        defaultValue: "#1b3554"
     }
 
     ColorSetting {
@@ -211,7 +211,7 @@ PluginSettings {
         label: "Edge Color (Compact Mode)"
         description: "Color used for edge highlights and specular lighting"
 
-        defaultValue: "#b8d8ff"
+        defaultValue: "#9fb8db"
     }
 
     SliderSetting {
@@ -254,5 +254,14 @@ PluginSettings {
         description: "Enable the secondary highlight along the inner edge"
 
         defaultValue: true
+    }
+
+    ToggleSetting {
+        settingKey: "followDmsColorSettingsCompact"
+
+        label: "Follow DMS Color Settings (Compact Mode)"
+        description: "Foloow DMS color settings for Base/Glow/Edge color"
+
+        defaultValue: false
     }
 }

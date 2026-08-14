@@ -139,7 +139,7 @@ Item {
                 text: "Base Color (Compact Mode)"
                 description: "Base color of the Dynamic Island"
 
-                value: root.toolboxRoot ? root.toolboxRoot.baseColorCompact : "#111b34"
+                value: root.toolboxRoot ? root.toolboxRoot.baseColorCompact : "#000000"
             }
 
             TColorSetting {
@@ -149,7 +149,7 @@ Item {
                 text: "Glow Color (Compact Mode)"
                 description: "Color used for the interior glow and secondary highlights"
 
-                value: root.toolboxRoot ? root.toolboxRoot.glowColorCompact : "#285b9c"
+                value: root.toolboxRoot ? root.toolboxRoot.glowColorCompact : "#1b3554"
             }
 
             TColorSetting {
@@ -159,7 +159,7 @@ Item {
                 text: "Edge Color (Compact Mode)"
                 description: "Color used for edge highlights and specular lighting"
 
-                value: root.toolboxRoot ? root.toolboxRoot.edgeColorCompact : "#b8d8ff"
+                value: root.toolboxRoot ? root.toolboxRoot.edgeColorCompact : "#9fb8db"
             }
 
             TSliderSetting {
@@ -211,6 +211,16 @@ Item {
                 description: "Enable the secondary highlight along the inner edge"
 
                 checked: root.toolboxRoot ? root.toolboxRoot.innerEdgeHighlightCompact : true
+            }
+
+            TToggleSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "followDmsColorSettingsCompact"
+
+                text: "Follow DMS Color Settings (Compact Mode)"
+                description: "Foloow DMS color settings for Base/Glow/Edge color"
+
+                checked: root.toolboxRoot ? root.toolboxRoot.followDmsColorSettingsCompact : false
             }
         }
 
