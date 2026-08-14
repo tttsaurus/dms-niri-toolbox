@@ -73,12 +73,86 @@ PluginComponent {
 
     readonly property real shadowIntensityCompact: {
         const value = Number(pluginData.shadowIntensityCompact ?? 0.3)
-        return Math.max(0.0, Math.min(0.9, Number.isFinite(value) ? Math.floor(value) : 0.3));
+        return Math.max(0.0, Math.min(0.9, Number.isFinite(value) ? value : 0.3));
     }
 
     readonly property bool interiorGlowCompact: pluginData.interiorGlowCompact ?? true
     readonly property bool innerEdgeHighlightCompact: pluginData.innerEdgeHighlightCompact ?? true
     readonly property bool followDmsColorSettingsCompact: pluginData.followDmsColorSettingsCompact ?? false
+
+    // peek mode shader settings
+    
+    readonly property color baseColorPeek: {
+        const value = pluginData.baseColorPeek ?? "#000000"
+        if (typeof value !== "string")
+            return "#000000"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#000000"
+    }
+
+    readonly property color glowColorPeek: {
+        const value = pluginData.glowColorPeek ?? "#1b3554"
+        if (typeof value !== "string")
+            return "#1b3554"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#1b3554"
+    }
+
+    readonly property color edgeColorPeek: {
+        const value = pluginData.edgeColorPeek ?? "#9fb8db"
+        if (typeof value !== "string")
+            return "#9fb8db"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#9fb8db"
+    }
+
+    readonly property int shadowWidthPeek: {
+        const value = Number(pluginData.shadowWidthPeek ?? 4)
+        return Number.isFinite(value) ? Math.floor(value) : 4
+    }
+
+    readonly property real shadowIntensityPeek: {
+        const value = Number(pluginData.shadowIntensityPeek ?? 0.3)
+        return Math.max(0.0, Math.min(0.9, Number.isFinite(value) ? value : 0.3));
+    }
+
+    readonly property bool interiorGlowPeek: pluginData.interiorGlowPeek ?? true
+    readonly property bool innerEdgeHighlightPeek: pluginData.innerEdgeHighlightPeek ?? true
+    readonly property bool followDmsColorSettingsPeek: pluginData.followDmsColorSettingsPeek ?? false
+
+    // expanded mode shader settings
+    
+    readonly property color baseColorExpanded: {
+        const value = pluginData.baseColorExpanded ?? "#000000"
+        if (typeof value !== "string")
+            return "#000000"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#000000"
+    }
+
+    readonly property color glowColorExpanded: {
+        const value = pluginData.glowColorExpanded ?? "#1b3554"
+        if (typeof value !== "string")
+            return "#1b3554"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#1b3554"
+    }
+
+    readonly property color edgeColorExpanded: {
+        const value = pluginData.edgeColorExpanded ?? "#9fb8db"
+        if (typeof value !== "string")
+            return "#9fb8db"
+        return /^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(value) ? value : "#9fb8db"
+    }
+
+    readonly property int shadowWidthExpanded: {
+        const value = Number(pluginData.shadowWidthExpanded ?? 4)
+        return Number.isFinite(value) ? Math.floor(value) : 4
+    }
+
+    readonly property real shadowIntensityExpanded: {
+        const value = Number(pluginData.shadowIntensityExpanded ?? 0.3)
+        return Math.max(0.0, Math.min(0.9, Number.isFinite(value) ? value : 0.3));
+    }
+
+    readonly property bool interiorGlowExpanded: pluginData.interiorGlowExpanded ?? true
+    readonly property bool innerEdgeHighlightExpanded: pluginData.innerEdgeHighlightExpanded ?? true
+    readonly property bool followDmsColorSettingsExpanded: pluginData.followDmsColorSettingsExpanded ?? false
 
     // ------------------------------------------------------------
 

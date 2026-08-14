@@ -229,6 +229,97 @@ Item {
 
             title: "Island Shader (Peek)"
             description: "Configure the island shader settings (peek mode)"
+
+            TColorSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "baseColorPeek"
+
+                text: "Base Color (Peek Mode)"
+                description: "Base color of the Dynamic Island"
+
+                value: root.toolboxRoot ? root.toolboxRoot.baseColorPeek : "#000000"
+            }
+
+            TColorSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "glowColorPeek"
+
+                text: "Glow Color (Peek Mode)"
+                description: "Color used for the interior glow and secondary highlights"
+
+                value: root.toolboxRoot ? root.toolboxRoot.glowColorPeek : "#1b3554"
+            }
+
+            TColorSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "edgeColorPeek"
+
+                text: "Edge Color (Peek Mode)"
+                description: "Color used for edge highlights and specular lighting"
+
+                value: root.toolboxRoot ? root.toolboxRoot.edgeColorPeek : "#9fb8db"
+            }
+
+            TSliderSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "shadowWidthPeek"
+
+                text: "Shadow Width (Peek Mode)"
+                description: "Width of the outer Dynamic Island shadow"
+
+                value: root.toolboxRoot ? root.toolboxRoot.shadowWidthPeek : 4
+
+                minimum: 0
+                maximum: 5
+
+                integer: true
+                unit: "px"
+            }
+
+            TFloatSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "shadowIntensityPeek"
+
+                text: "Shadow Intensity (Peek Mode)"
+                description: "Shadow intensity from 0.0 to 0.9"
+
+                value: root.toolboxRoot ? root.toolboxRoot.shadowIntensityPeek : 0.3
+
+                minimum: 0.0
+                maximum: 0.9
+
+                placeholder: "0.0 - 0.9"
+            }
+
+            TToggleSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "interiorGlowPeek"
+
+                text: "Interior Glow (Peek Mode)"
+                description: "Enable the animated glow inside the Dynamic Island"
+
+                checked: root.toolboxRoot ? root.toolboxRoot.interiorGlowPeek : true
+            }
+
+            TToggleSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "innerEdgeHighlightPeek"
+
+                text: "Inner Edge Highlight (Peek Mode)"
+                description: "Enable the secondary highlight along the inner edge"
+
+                checked: root.toolboxRoot ? root.toolboxRoot.innerEdgeHighlightPeek : true
+            }
+
+            TToggleSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "followDmsColorSettingsPeek"
+
+                text: "Follow DMS Color Settings (Peek Mode)"
+                description: "Foloow DMS color settings for Base/Glow/Edge color"
+
+                checked: root.toolboxRoot ? root.toolboxRoot.followDmsColorSettingsPeek : false
+            }
         }
 
         Foldout {
@@ -236,6 +327,97 @@ Item {
 
             title: "Island Shader (Expanded)"
             description: "Configure the island shader settings (expanded mode)"
+
+            TColorSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "baseColorExpanded"
+
+                text: "Base Color (Expanded Mode)"
+                description: "Base color of the Dynamic Island"
+
+                value: root.toolboxRoot ? root.toolboxRoot.baseColorExpanded : "#000000"
+            }
+
+            TColorSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "glowColorExpanded"
+
+                text: "Glow Color (Expanded Mode)"
+                description: "Color used for the interior glow and secondary highlights"
+
+                value: root.toolboxRoot ? root.toolboxRoot.glowColorExpanded : "#1b3554"
+            }
+
+            TColorSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "edgeColorExpanded"
+
+                text: "Edge Color (Expanded Mode)"
+                description: "Color used for edge highlights and specular lighting"
+
+                value: root.toolboxRoot ? root.toolboxRoot.edgeColorExpanded : "#9fb8db"
+            }
+
+            TSliderSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "shadowWidthExpanded"
+
+                text: "Shadow Width (Expanded Mode)"
+                description: "Width of the outer Dynamic Island shadow"
+
+                value: root.toolboxRoot ? root.toolboxRoot.shadowWidthExpanded : 4
+
+                minimum: 0
+                maximum: 5
+
+                integer: true
+                unit: "px"
+            }
+
+            TFloatSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "shadowIntensityExpanded"
+
+                text: "Shadow Intensity (Expanded Mode)"
+                description: "Shadow intensity from 0.0 to 0.9"
+
+                value: root.toolboxRoot ? root.toolboxRoot.shadowIntensityExpanded : 0.3
+
+                minimum: 0.0
+                maximum: 0.9
+
+                placeholder: "0.0 - 0.9"
+            }
+
+            TToggleSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "interiorGlowExpanded"
+
+                text: "Interior Glow (Expanded Mode)"
+                description: "Enable the animated glow inside the Dynamic Island"
+
+                checked: root.toolboxRoot ? root.toolboxRoot.interiorGlowExpanded : true
+            }
+
+            TToggleSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "innerEdgeHighlightExpanded"
+
+                text: "Inner Edge Highlight (Expanded Mode)"
+                description: "Enable the secondary highlight along the inner edge"
+
+                checked: root.toolboxRoot ? root.toolboxRoot.innerEdgeHighlightExpanded : true
+            }
+
+            TToggleSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "followDmsColorSettingsExpanded"
+
+                text: "Follow DMS Color Settings (Expanded Mode)"
+                description: "Foloow DMS color settings for Base/Glow/Edge color"
+
+                checked: root.toolboxRoot ? root.toolboxRoot.followDmsColorSettingsExpanded : false
+            }
         }
     }
 }

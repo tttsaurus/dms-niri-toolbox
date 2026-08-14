@@ -66,3 +66,14 @@
   # OR
   ./dev_scripts/build_shaders.sh --force
   ```
+- Check persistent settings:
+  ```bash
+  jq '.toolbox' ~/.config/DankMaterialShell/plugin_settings.json
+  ```
+- Delete persistent settings:
+  ```bash
+  tmp=$(mktemp) &&
+  jq 'del(.toolbox)' ~/.config/DankMaterialShell/plugin_settings.json > "$tmp" &&
+  mv "$tmp" ~/.config/DankMaterialShell/plugin_settings.json
+  ```
+  Run `dms restart` to regenerate settings

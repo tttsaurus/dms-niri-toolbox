@@ -264,4 +264,170 @@ PluginSettings {
 
         defaultValue: false
     }
+
+    SectionDivider {
+        width: parent.width
+        horizontalInset: 0
+    }
+
+    ColorSetting {
+        settingKey: "baseColorPeek"
+
+        label: "Base Color (Peek Mode)"
+        description: "Base color of the Dynamic Island"
+
+        defaultValue: "#000000"
+    }
+
+    ColorSetting {
+        settingKey: "glowColorPeek"
+
+        label: "Glow Color (Peek Mode)"
+        description: "Color used for the interior glow and secondary highlights"
+
+        defaultValue: "#1b3554"
+    }
+
+    ColorSetting {
+        settingKey: "edgeColorPeek"
+
+        label: "Edge Color (Peek Mode)"
+        description: "Color used for edge highlights and specular lighting"
+
+        defaultValue: "#9fb8db"
+    }
+
+    SliderSetting {
+        settingKey: "shadowWidthPeek"
+
+        label: "Shadow Width (Peek Mode)"
+        description: "Width of the outer Dynamic Island shadow"
+
+        defaultValue: 4
+
+        minimum: 0
+        maximum: 5
+
+        unit: "px"
+    }
+
+    StringSetting {
+        settingKey: "shadowIntensityPeek"
+
+        label: "Shadow Intensity (Peek Mode)"
+        description: "Shadow intensity from 0.0 to 0.9"
+
+        placeholder: "0.0 - 0.9"
+        defaultValue: "0.3"
+    }
+
+    ToggleSetting {
+        settingKey: "interiorGlowPeek"
+
+        label: "Interior Glow (Peek Mode)"
+        description: "Enable the animated glow inside the Dynamic Island"
+
+        defaultValue: true
+    }
+
+    ToggleSetting {
+        settingKey: "innerEdgeHighlightPeek"
+
+        label: "Inner Edge Highlight (Peek Mode)"
+        description: "Enable the secondary highlight along the inner edge"
+
+        defaultValue: true
+    }
+
+    ToggleSetting {
+        settingKey: "followDmsColorSettingsPeek"
+
+        label: "Follow DMS Color Settings (Peek Mode)"
+        description: "Foloow DMS color settings for Base/Glow/Edge color"
+
+        defaultValue: false
+    }
+
+    SectionDivider {
+        width: parent.width
+        horizontalInset: 0
+    }
+
+    ColorSetting {
+        settingKey: "baseColorExpanded"
+
+        label: "Base Color (Expanded Mode)"
+        description: "Base color of the Dynamic Island"
+
+        defaultValue: "#000000"
+    }
+
+    ColorSetting {
+        settingKey: "glowColorExpanded"
+
+        label: "Glow Color (Expanded Mode)"
+        description: "Color used for the interior glow and secondary highlights"
+
+        defaultValue: "#1b3554"
+    }
+
+    ColorSetting {
+        settingKey: "edgeColorExpanded"
+
+        label: "Edge Color (Expanded Mode)"
+        description: "Color used for edge highlights and specular lighting"
+
+        defaultValue: "#9fb8db"
+    }
+
+    SliderSetting {
+        settingKey: "shadowWidthExpanded"
+
+        label: "Shadow Width (Expanded Mode)"
+        description: "Width of the outer Dynamic Island shadow"
+
+        defaultValue: 4
+
+        minimum: 0
+        maximum: 5
+
+        unit: "px"
+    }
+
+    StringSetting {
+        settingKey: "shadowIntensityExpanded"
+
+        label: "Shadow Intensity (Expanded Mode)"
+        description: "Shadow intensity from 0.0 to 0.9"
+
+        placeholder: "0.0 - 0.9"
+        defaultValue: "0.3"
+    }
+
+    ToggleSetting {
+        settingKey: "interiorGlowExpanded"
+
+        label: "Interior Glow (Expanded Mode)"
+        description: "Enable the animated glow inside the Dynamic Island"
+
+        defaultValue: true
+    }
+
+    ToggleSetting {
+        settingKey: "innerEdgeHighlightExpanded"
+
+        label: "Inner Edge Highlight (Expanded Mode)"
+        description: "Enable the secondary highlight along the inner edge"
+
+        defaultValue: true
+    }
+
+    ToggleSetting {
+        settingKey: "followDmsColorSettingsExpanded"
+
+        label: "Follow DMS Color Settings (Expanded Mode)"
+        description: "Foloow DMS color settings for Base/Glow/Edge color"
+
+        defaultValue: false
+    }
 }
