@@ -27,11 +27,19 @@ Item {
     readonly property bool musicExclusive: root.exclusiveWidgetId === "musicTrack"
 
     readonly property url notificationSource: root.musicExclusive ? "" : registry.notificationSourceFor(root.notificationData)
-    readonly property bool hasNotification: !root.musicExclusive && String(root.notificationSource).length > 0 && notificationLoader.status === Loader.Ready
+    readonly property bool hasNotification:
+        !root.musicExclusive
+        && root.notificationData !== null
+        && String(root.notificationSource).length > 0
+        && String(root._displayNotificationSource) === String(root.notificationSource)
+        && notificationLoader.status === Loader.Ready
 
     readonly property real clockPreferredWidth: Math.max(Number(clockLoader.item?.preferredWidthHint ?? clockLoader.item?.implicitWidth ?? 52), 1) 
     readonly property real notificationPreferredWidth: Math.max(Number(notificationLoader.item?.preferredWidthHint ?? notificationLoader.item?.implicitWidth ?? 0), 0)
     readonly property real notificationMinimumWidth: Math.max(Number(notificationLoader.item?.minimumWidthHint ?? root.notificationPreferredWidth), 0)
+    readonly property real splitProgress: Math.max(0, Math.min(1, Number(root.islandContext?.splitProgress ?? 0)))
+    readonly property real liveRadiusDip: Math.max(Number(root.islandContext?.liveRadiusDip ?? root.radiusDip), 0)
+    readonly property real liveSplitPercentage: Math.max(0.1, Math.min(0.9, Number(root.islandContext?.liveSplitPercentage ?? root.splitPercentage)))
     readonly property string notificationSide: String(notificationLoader.item?.preferredSideHint ?? "right") === "left" ? "left" : "right"
 
     readonly property real musicPreferredWidth: Math.max(Number(musicLoader.item?.preferredWidthHint ?? musicLoader.item?.implicitWidth ?? 300), 1)
@@ -65,6 +73,16 @@ Item {
     readonly property var splitPlan: root.preferredSplitPlan.success ? root.preferredSplitPlan : root.minimumSplitPlan
     readonly property bool wantsSplit: !root.musicExclusive && root.hasNotification && root.splitPlan.success
     readonly property real splitPercentage: root.wantsSplit ? root.splitPlan.percentage : 0.5
+    readonly property var liveLayout: splitGeometry.layoutForSplitProgress(
+        root.width,
+        root.liveRadiusDip,
+        root.shapeInset,
+        root.liveSplitPercentage,
+        root.splitProgress,
+        root.notificationSide,
+        root.piecePadding
+    )
+
     readonly property real normalNaturalWidth: root.clockPreferredWidth + (root.hasNotification ? root.baseSpacing + root.notificationPreferredWidth : 0)
     readonly property real normalWidth: root.wantsSplit ? root.splitPlan.islandWidth : Math.min(root.maximumWidth, Math.max(root.idleWidth, root.normalNaturalWidth + root.contentPadding * 2))
     readonly property real normalStartOffset: Math.max(root.contentPadding, (root.width - root.normalNaturalWidth) / 2)
@@ -113,14 +131,22 @@ Item {
     Loader {
         id: clockLoader
 
-        visible: !root.musicExclusive
-        source: visible ? registry.widgetSourceFor("clock") : ""
+        source: registry.widgetSourceFor("clock")
         asynchronous: false
 
-        x: root.wantsSplit ? root.splitPlan.otherContentStartOffset : root.normalStartOffset
+        visible: opacity > 0.001
+        opacity: root.musicExclusive ? 0.0 : 1.0
+        x: root.wantsSplit || root.splitProgress > 0 ? root.liveLayout.otherContentStartOffset : root.normalStartOffset
         y: 0
-        width: root.wantsSplit ? root.splitPlan.otherContentWidth : root.clockPreferredWidth
+        width: root.wantsSplit || root.splitProgress > 0 ? root.liveLayout.otherContentWidth : root.clockPreferredWidth
         height: root.height
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 170
+                easing.type: Easing.OutCubic
+            }
+        }
 
         onLoaded: root.syncWidgetInputs()
     }
@@ -128,25 +154,22 @@ Item {
     Loader {
         id: notificationLoader
 
-        source: root.notificationSource
+        source: root._displayNotificationSource
         asynchronous: false
 
-        visible: root.hasNotification
-        opacity: visible ? 1.0 : 0.0
-        x: root.wantsSplit ? root.splitPlan.pieceContentStartOffset : root.normalStartOffset + root.clockPreferredWidth + root.baseSpacing
+        visible: opacity > 0.001
+        readonly property bool usesLiveSplit: root.wantsSplit || root.splitProgress > 0
+        opacity: !root._displayNotificationData ? 0.0 : usesLiveSplit ? root.splitProgress : root.hasNotification ? 1.0 : 0.0
+        x: usesLiveSplit ? root.liveLayout.pieceContentStartOffset : root.normalStartOffset + root.clockPreferredWidth + root.baseSpacing
         y: 0
-        width: root.wantsSplit ? root.splitPlan.pieceContentWidth : Math.min(root.notificationPreferredWidth, Math.max(root.width - x - root.contentPadding, 0))
+        width: usesLiveSplit ? root.liveLayout.pieceContentWidth : Math.min(root.notificationPreferredWidth, Math.max(root.width - x - root.contentPadding, 0))
         height: root.height
 
-        onLoaded: item.notificationData = root.notificationData
-
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 160
-                easing.type: Easing.OutCubic
-            }
-        }
+        onLoaded: item.notificationData = root._displayNotificationData
     }
+
+    property url _displayNotificationSource: ""
+    property var _displayNotificationData: null
 
     MouseArea {
         anchors.fill: parent
@@ -160,13 +183,21 @@ Item {
     Loader {
         id: musicLoader
 
-        visible: root.musicExclusive
-        source: visible ? registry.widgetSourceFor("musicTrack") : ""
+        source: registry.widgetSourceFor("musicTrack")
         asynchronous: false
 
+        visible: opacity > 0.001
+        opacity: root.musicExclusive ? 1.0 : 0.0
         anchors.centerIn: parent
         width: Math.min(root.musicPreferredWidth, Math.max(root.width - root.contentPadding * 2, 0))
         height: root.height
+
+        Behavior on opacity {
+            NumberAnimation {
+                duration: 170
+                easing.type: Easing.OutCubic
+            }
+        }
 
         onLoaded: {
             root.syncWidgetInputs()
@@ -175,11 +206,28 @@ Item {
     }
 
     onNotificationDataChanged: {
-        if (notificationLoader.item)
-            notificationLoader.item.notificationData = root.notificationData
+        if (root.notificationData) {
+            const source = registry.notificationSourceFor(root.notificationData)
+            if (String(source).length > 0) {
+                root._displayNotificationSource = source
+                root._displayNotificationData = root.notificationData
 
-        if (root.notificationData)
+                if (notificationLoader.item)
+                    notificationLoader.item.notificationData = root.notificationData
+            }
+
             root._animationRevision++
+        } else if (root.splitProgress <= 0.001) {
+            root._displayNotificationSource = ""
+            root._displayNotificationData = null
+        }
+    }
+    
+    onSplitProgressChanged: {
+        if (root.splitProgress <= 0.001 && !root.notificationData) {
+            root._displayNotificationSource = ""
+            root._displayNotificationData = null
+        }
     }
 
     onWidgetStatesChanged: root.syncWidgetInputs()

@@ -92,9 +92,7 @@ Item {
 
         const next = Object.assign({}, notification)
         const override = Number(ttlOverride)
-        const ttl = Number.isFinite(override) && override >= 0
-            ? Math.floor(override)
-            : root.notificationTtl(next)
+        const ttl = Number.isFinite(override) && override >= 0 ? Math.floor(override) : root.notificationTtl(next)
 
         notificationTimer.stop()
         root._currentNotification = next

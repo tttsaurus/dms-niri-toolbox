@@ -44,6 +44,80 @@ QtObject {
         }
     }
 
+    function layoutForSplitProgress(
+        islandWidth,
+        radiusDip,
+        shapeInset,
+        percentage,
+        splitProgress,
+        side,
+        piecePadding
+    ) {
+        const width = Math.max(Number(islandWidth) || 0, 0)
+        const radius = Math.max(Number(radiusDip) || 0, 0)
+        const inset = Math.max(Number(shapeInset) || 0, 0)
+        const padding = Math.max(Number(piecePadding) || 0, 0)
+        const normalizedSide = root.normalizeSide(side)
+        const normalizedPercentage = Math.max(root.minimumPercentage, Math.min(root.maximumPercentage, Number(percentage) || 0.5))
+        let progress = Math.max(0, Math.min(1, Number(splitProgress) || 0))
+
+        const fullWidth = Math.max(width - inset * 2, 2)
+        const gap = Math.max(inset * 2, 2)
+        const availableWidth = fullWidth - gap
+        const shaderRadius = Math.max(radius - inset, 0)
+        const minimumPieceWidth = shaderRadius * 2 + root.minimumPieceEpsilon
+
+        if (availableWidth <= minimumPieceWidth * 2)
+            progress = 0
+
+        const targetLeftWidth = availableWidth > 0 ? Math.max(minimumPieceWidth, Math.min(availableWidth - minimumPieceWidth, availableWidth * normalizedPercentage)) : fullWidth
+        const targetRightWidth = Math.max(availableWidth - targetLeftWidth, 0)
+
+        const targetLeftCenter = -fullWidth * 0.5 + targetLeftWidth * 0.5
+        const targetRightCenter = fullWidth * 0.5 - targetRightWidth * 0.5
+
+        const leftWidth = fullWidth + (targetLeftWidth - fullWidth) * progress
+        const rightWidth = fullWidth + (targetRightWidth - fullWidth) * progress
+        const leftCenter = targetLeftCenter * progress
+        const rightCenter = targetRightCenter * progress
+
+        const leftStart = width * 0.5 + leftCenter - leftWidth * 0.5
+        const rightStart = width * 0.5 + rightCenter - rightWidth * 0.5
+        const leftContentStart = leftStart + padding
+        const rightContentStart = rightStart + padding
+        const leftContentWidth = Math.max(leftWidth - padding * 2, 0)
+        const rightContentWidth = Math.max(rightWidth - padding * 2, 0)
+
+        const pieceIsLeft = normalizedSide === "left"
+        return {
+            success: true,
+            reason: "",
+            islandWidth: width,
+            percentage: normalizedPercentage,
+            progress: progress,
+            gap: gap,
+            shapeInset: inset,
+            availableWidth: availableWidth,
+            minimumPieceWidth: minimumPieceWidth,
+            leftWidth: leftWidth,
+            rightWidth: rightWidth,
+            leftStartOffset: leftStart,
+            rightStartOffset: rightStart,
+            leftContentStartOffset: leftContentStart,
+            rightContentStartOffset: rightContentStart,
+            leftContentWidth: leftContentWidth,
+            rightContentWidth: rightContentWidth,
+            pieceStartOffset: pieceIsLeft ? leftStart : rightStart,
+            pieceContentStartOffset: pieceIsLeft ? leftContentStart : rightContentStart,
+            pieceWidth: pieceIsLeft ? leftWidth : rightWidth,
+            pieceContentWidth: pieceIsLeft ? leftContentWidth : rightContentWidth,
+            otherStartOffset: pieceIsLeft ? rightStart : leftStart,
+            otherContentStartOffset: pieceIsLeft ? rightContentStart : leftContentStart,
+            otherWidth: pieceIsLeft ? rightWidth : leftWidth,
+            otherContentWidth: pieceIsLeft ? rightContentWidth : leftContentWidth
+        }
+    }
+
     function planForPiece(
         islandWidth,
         radiusDip,

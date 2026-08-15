@@ -24,7 +24,11 @@ Item {
     readonly property real shapeInset: Math.max(Number(root.islandContext?.shapeInset ?? 5), 0)
 
     readonly property url notificationSource: registry.notificationSourceFor(root.notificationData)
-    readonly property bool hasNotification: String(root.notificationSource).length > 0 && notificationLoader.status === Loader.Ready
+    readonly property bool hasNotification:
+        root.notificationData !== null
+        && String(root.notificationSource).length > 0
+        && String(root._displayNotificationSource) === String(root.notificationSource)
+        && notificationLoader.status === Loader.Ready
 
     readonly property real clockMinimumWidth: Math.max(Number(clockLoader.item?.minimumWidthHint ?? 52), 1)
     readonly property real clockPreferredWidth: Math.max(root.clockMinimumWidth, Number(clockLoader.item?.preferredWidthHint ?? clockLoader.item?.implicitWidth ?? 52))
@@ -34,6 +38,9 @@ Item {
     readonly property real baseMinimumWidth: root.clockMinimumWidth + root.baseSpacing + root.musicMinimumWidth
 
     readonly property real notificationPreferredWidth: Math.max(Number(notificationLoader.item?.preferredWidthHint ?? notificationLoader.item?.implicitWidth ?? 0), 0)
+    readonly property real splitProgress: Math.max(0, Math.min(1, Number(root.islandContext?.splitProgress ?? 0)))
+    readonly property real liveRadiusDip: Math.max(Number(root.islandContext?.liveRadiusDip ?? root.radiusDip), 0)
+    readonly property real liveSplitPercentage: Math.max(0.1, Math.min(0.9, Number(root.islandContext?.liveSplitPercentage ?? root.splitPercentage)))
     readonly property real notificationMinimumWidth: Math.max(Number(notificationLoader.item?.minimumWidthHint ?? root.notificationPreferredWidth), 0)
     readonly property string notificationSide: String(notificationLoader.item?.preferredSideHint ?? "right") === "left" ? "left" : "right"
 
@@ -68,9 +75,29 @@ Item {
     readonly property var splitPlan: root.preferredSplitPlan.success? root.preferredSplitPlan : root.minimumSplitPlan
     readonly property bool wantsSplit: root.hasNotification && root.splitPlan.success
     readonly property real splitPercentage: root.wantsSplit ? root.splitPlan.percentage : 0.5
-    readonly property real baseAvailableWidth: root.wantsSplit ? root.splitPlan.otherContentWidth : root.baseNaturalWidth
-    readonly property real clockAssignedWidth: Math.min(root.clockPreferredWidth, Math.max(root.clockMinimumWidth, root.baseAvailableWidth - root.baseSpacing - root.musicMinimumWidth))
-    readonly property real musicAssignedWidth: Math.min(root.musicPreferredWidth, Math.max(root.musicMinimumWidth, root.baseAvailableWidth - root.baseSpacing - root.clockAssignedWidth))
+    readonly property var liveLayout: splitGeometry.layoutForSplitProgress(
+        root.width,
+        root.liveRadiusDip,
+        root.shapeInset,
+        root.liveSplitPercentage,
+        root.splitProgress,
+        root.notificationSide,
+        root.piecePadding
+    )
+
+    readonly property real baseAvailableWidth: root.liveLayout.otherContentWidth
+    readonly property real baseUsableWidth: Math.max(root.baseAvailableWidth - root.baseSpacing, 0)
+    readonly property real baseMinimumPayloadWidth: root.clockMinimumWidth + root.musicMinimumWidth
+    readonly property real clockAssignedWidth: {
+        if (root.baseUsableWidth >= root.clockPreferredWidth + root.musicPreferredWidth)
+            return root.clockPreferredWidth
+        if (root.baseUsableWidth >= root.baseMinimumPayloadWidth)
+            return Math.min(root.clockPreferredWidth, root.baseUsableWidth - root.musicMinimumWidth)
+
+        const ratio = root.baseMinimumPayloadWidth > 0 ? root.clockMinimumWidth / root.baseMinimumPayloadWidth : 0.5
+        return root.baseUsableWidth * ratio
+    }
+    readonly property real musicAssignedWidth: Math.max(0, root.baseUsableWidth - root.clockAssignedWidth)
     readonly property real requestedWidth: root.wantsSplit ? root.splitPlan.islandWidth : root.baseIslandWidth
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
     readonly property real requestedReservationWidth: root.requestedWidth
@@ -109,24 +136,10 @@ Item {
     Item {
         id: basePiece
 
-        x: root.wantsSplit ? root.splitPlan.otherContentStartOffset : (root.width - width) / 2
+        x: root.liveLayout.otherContentStartOffset
         y: 0
-        width: root.wantsSplit ? root.splitPlan.otherContentWidth : root.baseNaturalWidth
+        width: root.liveLayout.otherContentWidth
         height: root.height
-
-        Behavior on x {
-            NumberAnimation {
-                duration: 200
-                easing.type: Easing.OutQuart
-            }
-        }
-
-        Behavior on width {
-            NumberAnimation {
-                duration: 200
-                easing.type: Easing.OutQuart
-            }
-        }
 
         Row {
             anchors.centerIn: parent
@@ -159,32 +172,45 @@ Item {
     Loader {
         id: notificationLoader
 
-        source: root.notificationSource
+        source: root._displayNotificationSource
         asynchronous: false
 
-        visible: root.hasNotification && root.wantsSplit
-        opacity: visible ? 1.0 : 0.0
-        x: root.wantsSplit ? root.splitPlan.pieceContentStartOffset : root.width
+        visible: opacity > 0.001
+        opacity: root._displayNotificationData && (root.wantsSplit || root.splitProgress > 0) ? root.splitProgress : 0.0
+        x: root.liveLayout.pieceContentStartOffset
         y: 0
-        width: root.wantsSplit ? root.splitPlan.pieceContentWidth : 0
+        width: root.liveLayout.pieceContentWidth
         height: root.height
 
-        onLoaded: item.notificationData = root.notificationData
+        onLoaded: item.notificationData = root._displayNotificationData
+    }
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 160
-                easing.type: Easing.OutCubic
+    property url _displayNotificationSource: ""
+    property var _displayNotificationData: null
+
+    onNotificationDataChanged: {
+        if (root.notificationData) {
+            const source = registry.notificationSourceFor(root.notificationData)
+            if (String(source).length > 0) {
+                root._displayNotificationSource = source
+                root._displayNotificationData = root.notificationData
+
+                if (notificationLoader.item)
+                    notificationLoader.item.notificationData = root.notificationData
             }
+
+            root._animationRevision++
+        } else if (root.splitProgress <= 0.001) {
+            root._displayNotificationSource = ""
+            root._displayNotificationData = null
         }
     }
 
-    onNotificationDataChanged: {
-        if (notificationLoader.item)
-            notificationLoader.item.notificationData = root.notificationData
-
-        if (root.notificationData)
-            root._animationRevision++
+    onSplitProgressChanged: {
+        if (root.splitProgress <= 0.001 && !root.notificationData) {
+            root._displayNotificationSource = ""
+            root._displayNotificationData = null
+        }
     }
 
     onWidgetStatesChanged: root.syncWidgetInputs()

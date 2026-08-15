@@ -10,7 +10,7 @@ Item {
     property real initialWidth: 168
     property int reservationRevision: 0
 
-    readonly property real reservedWidth: {
+    readonly property real targetReservedWidth: {
         // getGlobalVar() is not a reactive QML property. Reading the revision
         // makes callers re-evaluate when the published metrics change
         root.reservationRevision
@@ -27,6 +27,15 @@ Item {
 
         return Number.isFinite(value) && value > 0 ? Math.max(fallback, value) : fallback
     }
+    
+    property real reservedWidth: root.targetReservedWidth
+
+    Behavior on reservedWidth {
+        NumberAnimation {
+            duration: 240
+            easing.type: Easing.OutQuart
+        }
+    }
 
     property bool reservationBindingEnabled: true
 
@@ -38,7 +47,6 @@ Item {
 
     function mappedCenterWidgets() {
         const configured = toolboxRoot.barConfig?.centerWidgets || []
-
         return configured.map(
             (widget, index) => {
                 if (typeof widget === "string") {
@@ -50,7 +58,6 @@ Item {
                 }
 
                 const object = Object.assign({}, widget)
-
                 object.widgetId = widget.id || widget.widgetId
                 object.id = (widget.id || widget.widgetId) + "_" + index
                 object.enabled = widget.enabled !== false
@@ -155,7 +162,6 @@ Item {
 
     function projectedWidgets() {
         const widgets = mappedCenterWidgets()
-
         switch (root.centeringMode) {
             case "index":
                 return applyIndexReservation(widgets)

@@ -50,6 +50,7 @@ Item {
 
     property real animatedRadius: root._targetRadius
     property real animatedSplit: root.splitEnabled ? 1.0 : 0.0
+    property real animatedSplitPercentage: root.splitPercentage
 
     Behavior on animatedRadius {
         NumberAnimation {
@@ -59,6 +60,13 @@ Item {
     }
 
     Behavior on animatedSplit {
+        NumberAnimation {
+            duration: 220
+            easing.type: Easing.OutQuart
+        }
+    }
+
+    Behavior on animatedSplitPercentage {
         NumberAnimation {
             duration: 220
             easing.type: Easing.OutQuart
@@ -121,26 +129,14 @@ Item {
             contentEnterAnimation.restart()
     }
 
-    ParallelAnimation {
+    NumberAnimation {
         id: contentEnterAnimation
-
-        NumberAnimation {
-            target: contentLayer
-            property: "opacity"
-            from: root.contentChangeAnimation === "none" ? 1.0 : 0.62
-            to: 1.0
-            duration: 170
-            easing.type: Easing.OutCubic
-        }
-
-        NumberAnimation {
-            target: contentLayer
-            property: "scale"
-            from: root.contentChangeAnimation === "none" ? 1.0 : 0.965
-            to: 1.0
-            duration: 220
-            easing.type: Easing.OutQuart
-        }
+        target: contentLayer
+        property: "opacity"
+        from: root.contentChangeAnimation === "none" ? 1.0 : 0.88
+        to: 1.0
+        duration: 150
+        easing.type: Easing.OutCubic
     }
 
     // keep a visible fallback until the local .qsb has been baked,
@@ -174,7 +170,7 @@ Item {
         property real interiorGlow: root.animatedIslandInteriorGlow
         property real innerEdgeHighlight: root.animatedIslandInnerEdgeHighlight
         property real enableSplit: root.animatedSplit
-        property real splitPercentage: root.clamp(root.splitPercentage, 0.1, 0.9)
+        property real splitPercentage: root.clamp(root.animatedSplitPercentage, 0.1, 0.9)
 
         fragmentShader: Qt.resolvedUrl("shaders/dynamic_island.frag.qsb")
 
