@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell.Services.Mpris
 
 import qs.Common
@@ -10,6 +11,8 @@ Item {
 
     property string presentation: "compact"
     property var widgetState: ({})
+    // visual host metric supplied by the composing scene
+    property real hostInset: 5
 
     readonly property MprisPlayer player: MprisController.activePlayer
     readonly property bool widgetVisible: root.player !== null && root.player.playbackState !== MprisPlaybackState.Stopped
@@ -37,13 +40,42 @@ Item {
     }
     readonly property url artworkSource: TrackArtService.resolvedArtUrl
 
-    readonly property real minimumWidthHint: root.detailed ? 220 : 88
-    readonly property real preferredWidthHint: root.detailed ? 310 : 104
-    readonly property real preferredHeightHint: root.detailed ? 48 : 36
+    readonly property real effectiveHostHeight: root.height > 1 ? root.height : 36
+    readonly property real controlInset: Math.max(3, Math.min(Number(root.hostInset) || 5, root.effectiveHostHeight * 0.24))
+    readonly property real availableControlHeight: Math.max(14, root.effectiveHostHeight - root.controlInset * 2)
+    readonly property real artworkSize: Math.max(14, root.availableControlHeight * 0.72)
+    readonly property real artworkRadius: Math.max(4, root.artworkSize * 0.25)
+    readonly property real playButtonSize: Math.max(14, root.artworkSize * 0.88)
+    readonly property real playButtonVisualSize: root.playButtonSize * 1.1
+    readonly property real waveHeight: Math.max(11, root.artworkSize * 0.76)
+    readonly property real waveWidth: Math.max(14, root.artworkSize * 0.88)
+    readonly property real controlSpacing: Math.max(4, Math.min(Theme.spacingS, root.artworkSize * 0.24))
+    readonly property real metadataSpacing: root.controlSpacing
+    readonly property real leftPadding: root.detailed ? Theme.spacingS * 2 : 0
+    readonly property real rightPadding: Theme.spacingS * 2
+    readonly property real compactNaturalWidth: root.artworkSize + root.waveWidth + root.playButtonVisualSize + root.controlSpacing * 2 + root.rightPadding
+
+    readonly property real metadataMaximumWidth: 300
+    readonly property real metadataNaturalWidth: metadataTitle.implicitWidth + (root.trackArtist.length > 0 ? metadataSeparator.implicitWidth + metadataArtist.implicitWidth + metadataRow.spacing * 2 : 0)
+    readonly property real metadataPreferredWidth: Math.min(root.metadataMaximumWidth, Math.max(0, root.metadataNaturalWidth))
+    readonly property real metadataMinimumWidth: Math.min(root.metadataPreferredWidth, 92)
+    readonly property bool metadataCapped: root.metadataNaturalWidth > root.metadataMaximumWidth
+    readonly property real metadataSeparatorWidth: root.trackArtist.length > 0 ? metadataSeparator.implicitWidth + metadataRow.spacing * 2 : 0
+    readonly property real metadataNaturalTextWidth: metadataTitle.implicitWidth + (root.trackArtist.length > 0 ? metadataArtist.implicitWidth : 0)
+    readonly property real metadataAvailableCappedTextWidth: Math.max(0, Math.min(root.metadataMaximumWidth, metadataBox.width) - root.metadataSeparatorWidth)
+    readonly property real availableMetadataWidth: Math.max(0, root.width - root.leftPadding - root.rightPadding - root.artworkSize - root.waveWidth - root.playButtonVisualSize - root.controlSpacing * 2 - root.metadataSpacing)
+
+    readonly property real minimumWidthHint: root.compactNaturalWidth + (root.detailed ? root.leftPadding : 0) + (root.detailed && root.metadataMinimumWidth > 0 ? root.metadataSpacing + root.metadataMinimumWidth : 0)
+    readonly property real preferredWidthHint: root.compactNaturalWidth + (root.detailed ? root.leftPadding : 0) + (root.detailed && root.metadataPreferredWidth > 0 ? root.metadataSpacing + root.metadataPreferredWidth : 0)
+    // scene skeletons currently own height; this protocol hint is informational only
+    readonly property real preferredHeightHint: 36
     readonly property bool interactive: true
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
+
+    property real contentReveal: 0.0
+    property real artworkReveal: 0.0
 
     signal activated()
     signal statePatchRequested(var patch)
@@ -58,6 +90,68 @@ Item {
         root.actionRequested("togglePlaying", {})
     }
 
+    function syncContentReveal() {
+        if (!root.widgetVisible) {
+            root.contentReveal = 0.0
+            root.artworkReveal = 0.0
+            return
+        }
+
+        root.contentReveal = 0.0
+        contentRevealTimer.restart()
+        root.syncArtworkReveal(true)
+    }
+
+    function syncArtworkReveal(deferReveal) {
+        if (!root.widgetVisible || artworkImage.status !== Image.Ready) {
+            root.artworkReveal = 0.0
+            return
+        }
+
+        if (deferReveal) {
+            root.artworkReveal = 0.0
+            artworkRevealTimer.restart()
+        } else {
+            root.artworkReveal = 1.0
+        }
+    }
+
+    function resetWave() {
+        for (let i = 0; i < waveRepeater.count; ++i) {
+            const item = waveRepeater.itemAt(i)
+            if (item)
+                item.level = item.idleLevel
+        }
+    }
+
+    Behavior on contentReveal {
+        NumberAnimation {
+            duration: 190
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    Behavior on artworkReveal {
+        NumberAnimation {
+            duration: 220
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    Timer {
+        id: contentRevealTimer
+        interval: 1
+        repeat: false
+        onTriggered: root.contentReveal = root.widgetVisible ? 1.0 : 0.0
+    }
+
+    Timer {
+        id: artworkRevealTimer
+        interval: 1
+        repeat: false
+        onTriggered: root.artworkReveal = root.widgetVisible && artworkImage.status === Image.Ready ? 1.0 : 0.0
+    }
+
     MouseArea {
         anchors.fill: parent
         enabled: root.widgetVisible
@@ -70,23 +164,32 @@ Item {
         id: contentRow
 
         anchors.centerIn: parent
-        spacing: Theme.spacingS
+        spacing: root.controlSpacing
+        opacity: root.contentReveal
+        scale: 0.96 + root.contentReveal * 0.04
+
+        Item {
+            visible: root.detailed
+            width: Math.max(0, root.leftPadding - contentRow.spacing)
+            height: 1
+        }
 
         Item {
             id: artworkBox
 
-            width: root.detailed ? 30 : 24
+            width: root.artworkSize
             height: width
             anchors.verticalCenter: parent.verticalCenter
 
             Rectangle {
                 anchors.fill: parent
-                radius: 5
+                radius: root.artworkRadius
                 color: Theme.surfaceContainerHighest
+                antialiasing: true
             }
 
             Image {
-                id: artwork
+                id: artworkImage
 
                 anchors.fill: parent
                 source: root.artworkSource
@@ -94,54 +197,87 @@ Item {
                 asynchronous: true
                 cache: true
                 smooth: true
-                opacity: status === Image.Ready ? 1.0 : 0.0
+                mipmap: true
+                sourceSize: Qt.size(Math.max(64, Math.round(root.artworkSize * 4)), Math.max(64, Math.round(root.artworkSize * 4)))
+                visible: false
 
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: 180
-                        easing.type: Easing.OutCubic
-                    }
-                }
+                onStatusChanged: root.syncArtworkReveal(status === Image.Ready)
             }
 
-            DankIcon {
-                anchors.centerIn: parent
-                name: "music_note"
-                size: root.detailed ? 18 : 15
-                color: Theme.primary
-                opacity: artwork.status === Image.Ready ? 0.0 : 1.0
+            Rectangle {
+                id: artworkMask
 
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: 160
-                        easing.type: Easing.OutCubic
-                    }
-                }
+                anchors.fill: parent
+                radius: root.artworkRadius
+                color: "white"
+                antialiasing: true
+                visible: false
+                layer.enabled: true
+                layer.samples: 4
+            }
+
+            MultiEffect {
+                anchors.fill: parent
+                source: artworkImage
+                maskEnabled: true
+                maskSource: artworkMask
+                maskThresholdMin: 0.45
+                maskSpreadAtMin: 0.35
+                blurEnabled: true
+                blur: 0.055
+                blurMax: 8
+                blurMultiplier: 0.65
+                autoPaddingEnabled: false
+                opacity: root.artworkReveal
+                scale: 0.94 + root.artworkReveal * 0.06
             }
         }
 
         Item {
             id: waveBox
 
-            width: 20
-            height: root.detailed ? 24 : 18
+            width: root.waveWidth
+            height: root.waveHeight
             anchors.verticalCenter: parent.verticalCenter
 
             Row {
-                anchors.centerIn: parent
-                spacing: 2
+                id: waveRow
+
+                anchors {
+                    horizontalCenter: parent.horizontalCenter
+                    bottom: parent.bottom
+                }
+                height: parent.height
+                spacing: Math.max(1.2, root.waveWidth * 0.075)
 
                 Repeater {
+                    id: waveRepeater
+
                     model: [0.62, 0.92, 0.74, 1.0]
 
-                    delegate: Rectangle {
-                        width: 2.5
-                        height: waveBox.height * (0.24 + index * 0.035)
-                        radius: width / 2
-                        color: Theme.primary
+                    delegate: Item {
+                        id: waveTrack
 
-                        SequentialAnimation on height {
-                            running: root.widgetVisible
+                        readonly property real idleLevel: 0.30 + index * 0.045
+                        property real level: idleLevel
+
+                        width: Math.max(1.6, root.waveWidth * 0.105)
+                        height: waveBox.height
+
+                        Rectangle {
+                            anchors {
+                                horizontalCenter: parent.horizontalCenter
+                                bottom: parent.bottom
+                            }
+
+                            width: parent.width
+                            height: parent.height * waveTrack.level
+                            radius: width / 2
+                            color: Theme.primary
+                        }
+
+                        SequentialAnimation on level {
+                            running: root.widgetVisible && root.playing
                             loops: Animation.Infinite
 
                             PauseAnimation {
@@ -149,13 +285,13 @@ Item {
                             }
 
                             NumberAnimation {
-                                to: waveBox.height * modelData
+                                to: modelData
                                 duration: 360 + index * 55
                                 easing.type: Easing.InOutSine
                             }
 
                             NumberAnimation {
-                                to: waveBox.height * (0.26 + ((index + 1) % 3) * 0.07)
+                                to: waveTrack.idleLevel
                                 duration: 420 + index * 45
                                 easing.type: Easing.InOutSine
                             }
@@ -169,37 +305,82 @@ Item {
             id: metadataBox
 
             visible: root.detailed
-            width: root.detailed ? Math.max(0, root.width - artworkBox.width - waveBox.width - playButton.width - contentRow.spacing * 3) : 0
+            width: root.detailed ? Math.min(root.metadataPreferredWidth, root.availableMetadataWidth) : 0
             height: root.height
             anchors.verticalCenter: parent.verticalCenter
             clip: true
 
-            Column {
+            Row {
+                id: metadataRow
+
                 anchors {
                     left: parent.left
-                    right: parent.right
                     verticalCenter: parent.verticalCenter
                 }
 
-                spacing: 1
+                spacing: 4
 
                 StyledText {
-                    width: parent.width
+                    id: metadataTitle
+
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    width: {
+                        if (!root.metadataCapped)
+                            return implicitWidth
+
+                        if (root.trackArtist.length === 0)
+                            return Math.min(implicitWidth, root.metadataAvailableCappedTextWidth)
+
+                        if (root.metadataNaturalTextWidth <= 0)
+                            return 0
+
+                        return root.metadataAvailableCappedTextWidth * implicitWidth / root.metadataNaturalTextWidth
+                    }
                     text: root.trackTitle
-                    font.pixelSize: Theme.fontSizeSmall
+                    font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.DemiBold
                     color: Theme.surfaceText
-                    elide: Text.ElideRight
+                    elide: root.metadataCapped ? Text.ElideRight : Text.ElideNone
                     maximumLineCount: 1
                 }
 
                 StyledText {
-                    width: parent.width
+                    id: metadataSeparator
+
+                    anchors.verticalCenter: parent.verticalCenter
+
                     visible: root.trackArtist.length > 0
-                    text: root.trackArtist
-                    font.pixelSize: Math.max(9, Theme.fontSizeSmall - 2)
+                    text: "•"
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.weight: Font.DemiBold
                     color: Theme.surfaceVariantText
-                    elide: Text.ElideRight
+                }
+
+                StyledText {
+                    id: metadataArtist
+
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    visible: root.trackArtist.length > 0
+                    width: {
+                        if (!visible)
+                            return 0
+
+                        if (!root.metadataCapped)
+                            return implicitWidth
+
+                        if (root.metadataNaturalTextWidth <= 0)
+                            return 0
+
+                        return root.metadataAvailableCappedTextWidth * implicitWidth / root.metadataNaturalTextWidth
+                    }
+                    text: root.trackArtist
+                    font.pixelSize: Theme.fontSizeMedium * 0.85
+                    font.weight: Font.Bold
+                    font.italic: true
+                    color: Theme.surfaceVariantText
+                    elide: root.metadataCapped ? Text.ElideRight : Text.ElideNone
                     maximumLineCount: 1
                 }
             }
@@ -208,17 +389,18 @@ Item {
         Rectangle {
             id: playButton
 
-            width: 24
-            height: 24
+            width: root.playButtonVisualSize
+            height: width
             radius: width / 2
             anchors.verticalCenter: parent.verticalCenter
             color: root.playing ? Theme.primary : Theme.surfaceContainerHighest
             opacity: root.canTogglePlaying ? 1.0 : 0.45
+            antialiasing: true
 
             DankIcon {
                 anchors.centerIn: parent
                 name: root.playing ? "pause" : "play_arrow"
-                size: 15
+                size: Math.max(9, root.playButtonVisualSize * 0.7)
                 color: root.playing ? Theme.background : Theme.surfaceText
             }
 
@@ -230,5 +412,23 @@ Item {
                 onClicked: root.togglePlayback()
             }
         }
+
+        Item {
+            width: Math.max(0, root.rightPadding - contentRow.spacing)
+            height: 1
+        }
     }
+
+    onWidgetVisibleChanged: root.syncContentReveal()
+    onArtworkSourceChanged: {
+        root.artworkReveal = 0.0
+        if (artworkImage.status === Image.Ready)
+            root.syncArtworkReveal(true)
+    }
+    onPlayingChanged: {
+        if (!root.playing)
+            root.resetWave()
+    }
+
+    Component.onCompleted: root.syncContentReveal()
 }

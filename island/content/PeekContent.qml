@@ -28,6 +28,8 @@ Item {
     readonly property bool musicWidgetVisible: Boolean(musicLoader.item?.widgetVisible ?? false)
 
     property real musicPresentationPresence: root.musicExclusive && root.musicWidgetVisible ? 1.0 : 0.0
+    property real entryCompactWidth: root.idleWidth
+    property bool entryCompactWidthCaptured: false
 
     readonly property url notificationSource: root.musicExclusive ? "" : registry.notificationSourceFor(root.notificationData)
     readonly property bool hasNotification:
@@ -89,7 +91,7 @@ Item {
     readonly property real normalNaturalWidth: root.clockPreferredWidth + (root.hasNotification ? root.baseSpacing + root.notificationPreferredWidth : 0)
     readonly property real normalWidth: root.wantsSplit ? root.splitPlan.islandWidth : Math.min(root.maximumWidth, Math.max(root.idleWidth, root.normalNaturalWidth + root.contentPadding * 2))
     readonly property real normalStartOffset: Math.max(root.contentPadding, (root.width - root.normalNaturalWidth) / 2)
-    readonly property real requestedWidth: root.musicExclusive ? Math.min(root.maximumWidth, Math.max(root.idleWidth, root.musicPreferredWidth + root.contentPadding * 2)) : root.normalWidth
+    readonly property real requestedWidth: root.musicExclusive ? Math.min(root.maximumWidth, Math.max(root.entryCompactWidth, root.musicPreferredWidth + root.contentPadding * 2)) : root.normalWidth
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
 
     readonly property bool animateContentChange: true
@@ -111,6 +113,14 @@ Item {
 
     Core.IslandSplitGeometry {
         id: splitGeometry
+    }
+
+    function captureEntryCompactWidth() {
+        if (root.entryCompactWidthCaptured || root.width <= 0)
+            return
+
+        root.entryCompactWidth = Math.max(root.idleWidth, root.width)
+        root.entryCompactWidthCaptured = true
     }
 
     function widgetStateFor(widgetId) {
@@ -135,6 +145,7 @@ Item {
         if (musicLoader.item) {
             musicLoader.item.presentation = "peek"
             musicLoader.item.widgetState = root.widgetStateFor("musicTrack")
+            musicLoader.item.hostInset = root.shapeInset
         }
     }
 
@@ -211,6 +222,9 @@ Item {
                 Qt.callLater(root.leaveExclusiveMusicPeek)
         }
     }
+
+    onWidthChanged: root.captureEntryCompactWidth()
+    Component.onCompleted: root.captureEntryCompactWidth()
 
     onNotificationDataChanged: {
         if (root.notificationData) {

@@ -152,6 +152,7 @@ Item {
         if (musicLoader.item) {
             musicLoader.item.presentation = "compact"
             musicLoader.item.widgetState = root.widgetStateFor("musicTrack")
+            musicLoader.item.hostInset = root.shapeInset
         }
     }
 
