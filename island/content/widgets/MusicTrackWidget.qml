@@ -207,14 +207,14 @@ Item {
 
     Behavior on contentReveal {
         NumberAnimation {
-            duration: 190
+            duration: 320
             easing.type: Easing.OutCubic
         }
     }
 
     Behavior on artworkReveal {
         NumberAnimation {
-            duration: 220
+            duration: 520
             easing.type: Easing.OutCubic
         }
     }
@@ -310,7 +310,7 @@ Item {
                 blurMultiplier: 0.65
                 autoPaddingEnabled: false
                 opacity: root.artworkReveal
-                scale: 0.94 + root.artworkReveal * 0.06
+                scale: 0.06 + root.artworkReveal * 0.94
             }
         }
 
