@@ -10,6 +10,7 @@ PanelWindow {
     required property var modelData
     required property var controller
     required property real compactWidth
+    required property real compactMaximumWidth
 
     property var barAnchor: null
 
@@ -17,8 +18,9 @@ PanelWindow {
     readonly property real barSpacing: barAnchor?.barSpacing ?? 4
     readonly property real barThickness: barAnchor?.barThickness ?? 36
 
-    screen: modelData
+    readonly property real reservationWidth: island.barReservationWidth
 
+    screen: modelData
     anchors {
         top: true
         left: true
@@ -46,12 +48,14 @@ PanelWindow {
         item: root.contentItem
     }
 
+    // expanded must receive the full screen so every click outside the island can dismiss it
     mask: root.islandExpanded ? expandedMask : islandMask
 
     MouseArea {
         id: dismissArea
 
         anchors.fill: parent
+        z: 0
 
         visible: root.islandExpanded
         enabled: root.islandExpanded
@@ -64,10 +68,12 @@ PanelWindow {
 
         anchors.horizontalCenter: parent.horizontalCenter
         y: root.barSpacing
+        z: 1
 
         controller: root.controller
         compactWidth: root.compactWidth
         compactHeight: root.barThickness
+        compactMaximumWidth: Math.max(root.compactWidth, root.compactMaximumWidth)
 
         maximumWidth: Math.max(root.compactWidth, root.width)
         maximumHeight: Math.max(root.barThickness, root.height - root.barSpacing)

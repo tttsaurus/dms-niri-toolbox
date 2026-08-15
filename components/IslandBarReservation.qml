@@ -7,7 +7,26 @@ Item {
 
     required property var toolboxRoot
 
-    property int reservedWidth: 168
+    property real initialWidth: 168
+    property int reservationRevision: 0
+
+    readonly property real reservedWidth: {
+        // getGlobalVar() is not a reactive QML property. Reading the revision
+        // makes callers re-evaluate when the published metrics change
+        root.reservationRevision
+
+        const fallback = Math.max(Number(root.initialWidth) || 168, 1)
+        const toolbox = root.toolboxRoot
+        const screenName = toolbox.parentScreen?.name ?? ""
+
+        if (!toolbox.dynamicIslandEnabled || !toolbox.pluginService || !toolbox.pluginId || !screenName)
+            return fallback
+
+        const reservations = toolbox.pluginService.getGlobalVar(toolbox.pluginId, "islandReservationWidths", {})
+        const value = Number(reservations[screenName])
+
+        return Number.isFinite(value) && value > 0 ? Math.max(fallback, value) : fallback
+    }
 
     property bool reservationBindingEnabled: true
 
@@ -146,6 +165,23 @@ Item {
 
             default:
                 return widgets
+        }
+    }
+
+    Connections {
+        target: root.toolboxRoot.pluginService
+
+        function onGlobalVarChanged(changedPluginId, varName) {
+            if (changedPluginId === root.toolboxRoot.pluginId && varName === "islandReservationWidths")
+                root.reservationRevision++
+        }
+    }
+
+    Connections {
+        target: root.toolboxRoot
+
+        function onParentScreenChanged() {
+            root.reservationRevision++
         }
     }
 

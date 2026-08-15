@@ -65,13 +65,29 @@ Item {
                 toolboxRoot: root.toolboxRoot
                 settingKey: "islandReservedWidth"
 
-                text: "Island Reserved Width"
-                description: "Reserved center space for Dynamic Island"
+                text: "Island Initial Idle Width"
+                description: "Initial compact/idle width. Active compact content may dynamically reserve more Dank Bar space"
 
-                value: root.toolboxRoot ? root.toolboxRoot.islandReservedWidth : 168
+                value: root.toolboxRoot ? root.toolboxRoot.islandInitialIdleWidth : 168
 
                 minimum: 80
                 maximum: 200
+
+                integer: true
+                unit: "px"
+            }
+
+            TSliderSetting {
+                toolboxRoot: root.toolboxRoot
+                settingKey: "islandCompactMaxWidth"
+
+                text: "Island Compact Max Width"
+                description: "Maximum width compact content may request"
+
+                value: root.toolboxRoot ? root.toolboxRoot.islandCompactMaxWidth : 360
+
+                minimum: 200
+                maximum: 800
 
                 integer: true
                 unit: "px"

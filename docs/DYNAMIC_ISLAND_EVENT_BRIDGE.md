@@ -1,90 +1,95 @@
 # Dynamic Island Event Bridge Specs
 
-This document describes the event and content architecture used by the Dynamic Island subsystem in `dms-niri-toolbox`.
+This document specifies the Dynamic Island event, scene-content, geometry, reservation, split, animation, and interaction contracts used by `dms-niri-toolbox`.
+
+## Architecture
 
 ```text
-external event producers
-    │
-    ▼
+external / local event producers
+        │
+        ▼
 IslandEventBridge
-    │ eventReceived(event)
-    ▼
+        │ eventReceived(event)
+        ▼
 IslandController
-    ├── mode
-    └── currentEvent
-    │
-    ▼
+        ├── mode
+        ├── currentEvent
+        ├── TTL
+        └── requestPresentation() preserves the current event + TTL
+        │
+        ▼
 IslandContentRegistry
-    │
-    ▼
-Loader
-    │
-    ▼
-actual Content.qml
-    ├── requestedWidth
-    └── requestedHeight
-    │
-    ▼
+        ├── sceneSourceFor(mode, event)
+        │       └── IdleContent / PeekContent / ExpandedContent
+        └── notificationSourceFor(event)
+                └── JavaVersionSwitchNotification / future payload components
+        │
+        ▼
+scene template Content.qml
+        ├── loads payload components with Loader
+        ├── requests geometry / reservation
+        ├── optionally requests split
+        ├── optionally requests visual change animation
+        └── optionally requests another presentation/event/clear
+        │
+        ▼
 IslandPresenter
-    ├── validates requested dimensions
-    ├── applies compact / peek / expanded policy
-    └── produces targetWidth / targetHeight
-    │
-    ▼
-DynamicIsland
-    ├── geometry animation
-    └── ShaderEffect / visual shell
-    │
-    ▼
-IslandWindow
-    ├── Wayland layer-shell surface
-    ├── input mask
-    └── DankBar positioning
+        ├── validates and clamps geometry
+        ├── applies compact / peek / expanded policy
+        ├── lowers optional content capabilities
+        └── produces barReservationWidth
+        │                    │
+        ▼                    │ reverse policy result only
+DynamicIsland                ▼
+        │               IslandWindow.reservationWidth
+        │                    │
+        │                    ▼
+        │               IslandDaemon (composition root)
+        │                    │ publish per-screen global var
+        │                    ▼
+        │               IslandBarReservation
+        │                    │
+        │                    ▼
+        │               Dank Bar center spacer model
+        ▼
+shader / visual shell
 ```
 
-> Note:<br>
-> `IslandDaemon` is the composition root and the only daemon entrypoint specified in the `plugin.json`
-> ```json
-> "components": {
->   "widget": "./Toolbox.qml",
->   "daemon": "./island/IslandDaemon.qml"
-> },
-> ```
+`IslandDaemon` is the composition root and is the only layer allowed to bridge the island presentation policy back into `PluginService`. Scene templates and payload components must not know about `PluginService`, Dank Bar, or screen-global reservation storage.
 
 ## Canonical Island Event
 
-All producers should eventually produce the same logical event object:
+All producers should publish the same logical event envelope:
 
-```js
+```qml
 {
-    type: "debugPeek",
-    presentation: "peek",
-    ttl: 1800,
+    type: "javaVersionSwitch",
+    presentation: "compact",
+    ttl: 3200,
     payload: {
-        message: "hello",
-        width: 280
+        label: "Zulu 21",
+        javaPath: "/path/to/java/home"
     }
 }
 ```
 
 ### `type`
 
-Semantic content/event type. It is resolved by `IslandContentRegistry.qml`.
+Semantic event/content type. It is resolved by `IslandContentRegistry.qml`. Producers must not send QML paths.
 
-Examples:
+Examples include:
 
 ```text
-debugPeek
-debugExpanded
+javaVersionSwitch
+notification
 volume
 media
-notification
 battery
 workspace
 download
+debugPeek
+debugExpanded
 ```
-
-Backend code must not send QML paths. Use semantic types instead.
 
 ### `presentation`
 
@@ -96,438 +101,484 @@ peek
 expanded
 ```
 
-Current geometry semantics:
+If omitted, `IslandController.push()` defaults to `peek`. Unknown values fall back to `peek`.
 
-| Mode | Width | Height |
-|---|---|---|
-| `compact` | configured compact width | DankBar height |
-| `peek` | _**content-requested** width_ | DankBar height |
-| `expanded` | _**content-requested** width_ | _**content-requested height**_ |
+`type` and `presentation` are independent. A semantic event may begin in compact and later promote the *same event* to peek or expanded.
 
-If omitted, the controller defaults to `peek`. Unknown values fall back to `peek`.
+### Geometry semantics
 
-`type` and `presentation` are intentionally independent.
+| Mode | Width | Height | Dank Bar reservation |
+| --- | --- | --- | --- |
+| `compact` | content-requested, clamped to `[initialIdleWidth, compactMaximumWidth]` | Dank Bar height | follows accepted compact width/request |
+| `peek` | content-requested, clamped to the window maximum | Dank Bar height | initial idle footprint only (overlay growth) |
+| `expanded` | content-requested | content-requested | keeps only the initial idle footprint |
+
+**Compact is not a fixed-width mode anymore.** Compact content may grow the island and therefore dynamically grow the center reservation. This deliberately pushes/squeezes other Dank Bar center pills out of the requested space.
+
+The persistent setting historically named `islandReservedWidth` is retained for settings compatibility, but its meaning is now **Island Initial Idle Width**. It is a baseline, not a permanent reservation.
+
+`islandCompactMaxWidth` is the policy limit for compact growth. A template that cannot represent its content by that width should request `peek` rather than forcing an invalid compact layout.
 
 ### `ttl`
 
-Optional lifetime in milliseconds.
+Optional lifetime in milliseconds:
 
-```js
-ttl: 1800
+```qml
+ttl: 3200
 ```
 
-A positive finite TTL starts the controller timer. When it expires, the controller calls `clear()` and returns to compact mode. A newly pushed event cancels the previous TTL timer.
+A positive finite TTL starts the controller timer. Expiry calls `clear()`, removes the event, and returns to compact idle.
 
-Not having a `ttl` means no expiry.
+A newly `push()`ed event restarts TTL. `requestPresentation()` does **not** restart TTL; it is specifically for promoting/demoting the same transient event while preserving its lifetime.
 
 ### `payload`
 
-Arbitrary content-specific data. The bridge and controller do not interpret payload fields.
-
-Feel free to use and interpret the `payload` inside the actual content QML implementations.
-
-For example, you can put the requested `width`/`height` inside the `payload` of an event, and the whole event will be injected to the content QML implementations.
+Arbitrary event-specific immutable data. The bridge/controller do not interpret payload fields.
 
 ## `IslandEventBridge`
 
-The bridge is the boundary between external producers and Island state.
-
-Public output:
+Public outputs:
 
 ```qml
 signal eventReceived(var event)
 signal clearRequested()
 ```
 
-The daemon wires these signals into the controller:
+The daemon wires them to:
 
 ```qml
 onEventReceived: event => islandController.push(event)
 onClearRequested: islandController.clear()
 ```
 
-The bridge does not own the controller.
-
-### Direct ingress
-
-The bridge exposes:
+The global-QML ingress remains `PluginService` variable `islandEvent`. Use a unique `token` when repeatedly publishing the same semantic event:
 
 ```qml
-function accept(event) {
-    if (event)
-        root.eventReceived(event)
-}
+pluginService.setGlobalVar(pluginId, "islandEvent", {
+    token: "producer-" + Date.now() + "-" + Math.random(),
+    event: event
+})
 ```
 
-Use this for QML or future backend adapters.
-
-### PluginService global-var ingress
-
-The bridge watches:
-
-```text
-pluginId = toolbox
-global var = islandEvent
-```
-
-The global var may contain either a direct event:
-
-```js
-{
-    type: "debugPeek",
-    presentation: "peek"
-}
-```
-
-or an envelope:
-
-```js
-{
-    token: "producer-specific-event-id",
-    event: {
-        type: "debugPeek",
-        presentation: "peek"
-    }
-}
-```
-
-### `token`
-
-`PluginService.getGlobalVar()` is retained state, not a true event queue.
-
-`token` gives an event instance identity so the bridge can distinguish if it received a duplicate event.
-
-The bridge remembers the most recently consumed token and ignores duplicates.
-
-`token` is optional. It is mainly useful for the retained global-var transport. Direct function calls, signals, and IPC calls already have event semantics and do not need it.
-
-## Permanent Bash Debug Channel
-
-The bridge owns a permanent `IpcHandler` target:
-
-```text
-toolboxIslandDebug
-```
-
-This channel is intentionally restricted to debug content and should remain available for rendering, animation, sizing, and state-machine testing without a real backend.
-
-Examples:
-
-```bash
-dms ipc call toolboxIslandDebug peek "hello"
-```
-
-```bash
-dms ipc call toolboxIslandDebug peekSized "wide peek" 360 3000
-```
-
-```bash
-dms ipc call toolboxIslandDebug expand "expanded placeholder"
-```
-
-```bash
-dms ipc call toolboxIslandDebug expandSized "custom size" 640 320
-```
-
-```bash
-dms ipc call toolboxIslandDebug clear
-```
-
-Raw event injection:
-
-```bash
-dms ipc call toolboxIslandDebug pushJson '{"type":"debugExpanded","presentation":"expanded","payload":{"message":"raw event","width":700,"height":380}}'
-```
+The existing `toolboxIslandDebug` IPC remains a debug-only ingress.
 
 ## `IslandController`
-
-The controller owns logical Island state.
-
-Public state:
-
-```qml
-readonly property string mode
-readonly property var currentEvent
-```
-
-External code should call:
-
-```qml
-controller.push(event)
-controller.clear()
-```
 
 ### `push(event)`
 
 `push()`:
 
-1. rejects null
-2. shallow-clones the event
-3. validates `presentation`
-4. updates `mode`
-5. replaces `currentEvent`
-6. stops the previous TTL timer
-7. starts a new TTL timer when requested
+1. rejects null,
+2. shallow-clones the event envelope,
+3. validates `presentation`,
+4. replaces `currentEvent`,
+5. switches mode,
+6. cancels the previous TTL,
+7. starts the event TTL when requested.
 
-The clone is shallow, so payload objects are not deep-copied. Treat the entire event tree as immutable after publication.
+Treat the published event tree as immutable after publication.
+
+### `requestPresentation(presentation)`
+
+Switches only the presentation mode of the current event. It intentionally keeps `currentEvent` and the running TTL intact.
+
+Typical use:
+
+```text
+compact receives notification
+    ↓
+IdleContent tries compact split up to compactMaximumWidth
+    ↓ does not fit
+requestPresentation("peek")
+    ↓
+PeekContent renders the same event
+    ↓ same TTL expires
+clear()
+    ↓
+compact IdleContent
+```
 
 ### `clear()`
 
-`clear()` stops the timeout timer, clears `currentEvent`, and returns `mode` to `compact`.
+Stops the TTL timer, clears `currentEvent`, and returns to `compact`.
 
-### Future controller features
+Event arbitration such as priority, queueing, dedupe/coalescing, sticky events, and resume should remain in the controller rather than the shader or content templates.
 
-Put event arbitration in `IslandController`. Examples:
+## Two-level Content Registry
 
-```text
-priority
-preemption
-queueing
-dedupe/coalescing
-sticky events
-resume previous event
+`IslandContentRegistry` separates **scene layout** from **semantic payload**.
+
+### Scene templates
+
+```qml
+sceneSourceFor(mode, event)
 ```
 
-Do not put these policies in `DynamicIsland` or content files.
-
-## `IslandContentRegistry`
-
-The registry maps semantic event types to concrete content QML.
-
-For exmaple (a subset of the current implementation):
+Production mapping:
 
 ```text
-null / unknown  -> IdleContent.qml
-debugPeek       -> DebugPeekContent.qml
-debugExpanded   -> DebugExpandedContent.qml
+compact  -> IdleContent.qml
+peek     -> PeekContent.qml
+expanded -> ExpandedContent.qml
 ```
 
-## Island Content Contract
+Permanent debug event mappings may still select dedicated debug scenes.
 
-Every Island content currently follows this implicit interface:
+### Payload/notification components
+
+```qml
+notificationSourceFor(event)
+```
+
+Example:
+
+```text
+javaVersionSwitch -> content/notifications/JavaVersionSwitchNotification.qml
+```
+
+This separation is intentional. `IdleContent.qml` does not implement Java, notifications, clock formatting, lyrics, media, etc. It composes reusable payload components through `Loader`.
+
+## Scene Content Contract
+
+Scene content uses a capability-based contract. Only implement properties/signals that the scene needs; `IslandPresenter` probes optional capabilities and safely falls back when they are missing.
+
+### Optional inputs
 
 ```qml
 property var eventData: null
 property var controller: null
+property var islandContext: null
+```
 
+`eventData` is the current canonical event.
+
+`controller` is provided for compatibility, but new reusable content should prefer output signals instead of directly reaching into controller methods.
+
+`islandContext` currently provides:
+
+```qml
+{
+    mode,
+    idleWidth,
+    compactMaximumWidth,
+    compactHeight,
+    maximumWidth,
+    maximumHeight,
+    radiusDip,
+    shapeInset
+}
+```
+
+The context is presentation/geometry information, not a service locator. Do not put `PluginService`, Dank Bar objects, shell internals, or backend providers into it.
+
+### Optional geometry outputs
+
+```qml
 readonly property real requestedWidth: ...
 readonly property real requestedHeight: ...
+readonly property real requestedReservationWidth: ...
 ```
 
-### Inputs
+`requestedWidth` / `requestedHeight` request shell geometry.
 
-`eventData` is the current event object.
+`requestedReservationWidth` may request extra **compact** bar space. It cannot shrink compact reservation below the visible shell. Peek and expanded are overlay modes and intentionally ignore large reservation requests, retaining only the idle footprint.
 
-`controller` allows content interaction such as:
+Content must never assign the shell size or modify the Dank Bar spacer directly.
+
+### Optional split outputs
 
 ```qml
-controller.clear()
+readonly property bool wantsSplit: false
+readonly property real splitPercentage: 0.5
 ```
 
-or:
+When `wantsSplit` is true, the Presenter lowers the split request into the visual shell. `splitPercentage` is clamped to the shader-supported `[0.1, 0.9]` interval.
+
+Content should calculate legal split geometry through `IslandSplitGeometry.qml`; do not duplicate shader math ad hoc.
+
+### Optional content-change animation outputs
 
 ```qml
-controller.push({
-    type: "debugExpanded",
-    presentation: "expanded",
-    payload: { ... }
-})
+readonly property bool animateContentChange: false
+readonly property string contentAnimation: "subtle"
+readonly property int animationRevision: 0
 ```
 
-### Outputs
+Increment/change `animationRevision` when a semantic payload visually enters or changes. `DynamicIsland` may use this as a small visual acknowledgement. This does not imply mode changes and does not own event TTL.
 
-`requestedWidth` and `requestedHeight` are geometry requests.
+Supported values are intentionally soft hints; current shell understands `"subtle"` and `"none"`. Future visual shells may add additional hints without changing event semantics.
 
-Content must not resize the Island shell directly.
-
-## Content-owned Expanded Size
-
-Requested expanded size is deliberately owned by the concrete content implementation.
-
-Example (this is how you utilize `payload`):
+### Optional interaction outputs
 
 ```qml
-readonly property real requestedWidth:
-    requestedDimension(
-        eventData?.payload?.width,
-        520
-    )
-
-readonly property real requestedHeight:
-    requestedDimension(
-        eventData?.payload?.height,
-        260
-    )
+signal presentationRequested(string presentation)
+signal eventRequested(var event)
+signal clearRequested()
 ```
 
-Ownership:
+Preferred usage:
+
+```qml
+presentationRequested("expanded")
+eventRequested({ type: "media", presentation: "peek", ... })
+clearRequested()
+```
+
+The Presenter translates these into controller operations. This keeps components reusable and prevents them from depending on `IslandWindow` or visual-shell implementation details.
+
+Payload components may expose the same signals. Scene templates should relay them.
+
+## Split Geometry Contract
+
+`IslandSplitGeometry.qml` is the canonical CPU/QML mirror of `dynamic_island.frag` split constraints.
+
+Current shader constraints are:
 
 ```text
-Content
-    requests geometry
-        ↓
-Presenter
-    validates / clamps
-        ↓
-DynamicIsland
-    animates to accepted geometry
+splitPercentage ∈ [0.1, 0.9]
+splitGap = max(shapeInset * 2, 2)
+baseRadius = max(radiusDip - shapeInset, 0)
+minimum shader piece width = baseRadius * 2 + 0.001
 ```
 
-> Note: 
-> `DynamicIsland` is not aware of any implementation details.
+The helper also accounts for per-piece content padding.
+
+### `planForPiece(...)`
+
+Checks whether a requested content-width piece can be placed on `left` or `right` for an exact island width.
+
+Inputs:
+
+```qml
+planForPiece(
+    islandWidth,
+    radiusDip,
+    shapeInset,
+    requestedPieceWidth,
+    side,
+    otherMinimumWidth,
+    piecePadding
+)
+```
+
+### `findPlanForPiece(...)`
+
+Finds the **smallest** legal island width inside `[minimumIslandWidth, maximumIslandWidth]` for that requested piece.
+
+```qml
+findPlanForPiece(
+    minimumIslandWidth,
+    maximumIslandWidth,
+    radiusDip,
+    shapeInset,
+    requestedPieceWidth,
+    side,
+    otherMinimumWidth,
+    piecePadding
+)
+```
+
+The returned plan includes:
+
+```text
+success / reason
+islandWidth
+percentage
+gap / availableWidth / minimumPieceWidth
+leftWidth / rightWidth
+leftStartOffset / rightStartOffset
+leftContentStartOffset / rightContentStartOffset
+leftContentWidth / rightContentWidth
+pieceStartOffset / pieceContentStartOffset / pieceWidth / pieceContentWidth
+otherStartOffset / otherContentStartOffset / otherWidth / otherContentWidth
+```
+
+Offsets are x coordinates relative to the outer Island item.
+
+This means a scene can request “a 180 px notification piece on the right” without manually deriving shader percentage or layout offsets.
+
+## Idle / Peek Composition
+
+### `IdleContent.qml`
+
+Idle is the compact scene template.
+
+Without an event it loads only `widgets/ClockContent.qml` and uses initial idle width.
+
+With a recognized notification event:
+
+1. load the payload component,
+2. read its natural/requested content width and preferred side,
+3. call `findPlanForPiece(initialIdleWidth, compactMaximumWidth, ...)`,
+4. if legal, grow compact width/reservation and enable split,
+5. place clock and notification into the returned split pieces,
+6. if no legal compact split exists, request `peek` for the same event.
+
+Clock implementation must remain outside `IdleContent.qml`; it is loaded as a reusable component.
+
+### `PeekContent.qml`
+
+Peek uses the same clock + payload composition but may use the full window width policy.
+
+Its main role for transient notifications is overflow presentation: when compact cannot make a legal split before `compactMaximumWidth`, Peek retries with a larger limit.
+
+If split is still impossible due to an extreme screen/payload constraint, the current template falls back to a readable non-split clock + payload row rather than dropping the notification.
+
+TTL remains controller-owned. When notification TTL expires, `clear()` automatically returns to compact idle. Compact split notifications behave identically.
+
+## Java Version Switch Notification
+
+`JavaPage.qml` publishes `javaVersionSwitch` only after `switch_java.sh` exits successfully.
+
+The notification event begins in `compact` and has a short TTL. It contains the selected Java label/path. `JavaVersionSwitchNotification.qml` renders the semantic payload and does not know whether it is currently composed by compact or peek.
+
+This is the first production payload component and is intended as the pattern for future notifications.
+
+## Interaction / Dismissal Rules
+
+Interaction belongs to content, not to compact/peek mode itself.
+
+### Compact and Peek
+
+The shell has **no implicit click behavior**. Clicking an inert clock+notification scene does nothing.
+
+If a component needs interaction, it owns its `MouseArea`, button, hover region, etc., and may request another presentation/event through the optional signals.
+
+### Expanded
+
+Expanded has a global dismissal rule:
+
+- click outside the island -> `clear()`;
+- click a non-interactive area inside the island -> `clear()`;
+- click an interactive child region -> that child handles the click and expanded stays open unless the child explicitly requests clear/transition.
+
+Implementation is layered:
+
+```text
+IslandWindow full-screen dismiss area     (outside island)
+IslandPresenter expanded background area  (inside island, below content)
+loaded content interactive children       (above background dismissal)
+```
+
+This avoids putting global input semantics into every Expanded content file.
+
+## Dynamic Reservation Flow
+
+The reservation is per-screen and dynamic.
+
+```text
+scene requestedWidth/requestedReservationWidth
+        ↓
+IslandPresenter.barReservationWidth
+        ↓
+IslandWindow.reservationWidth
+        ↓
+IslandDaemon.publishReservation(screenName, width)
+        ↓
+PluginService global var: islandReservationWidths[screenName]
+        ↓
+IslandBarReservation.reservedWidth
+        ↓
+projected Dank Bar centerWidgetsModel
+```
+
+Rules:
+
+1. initial idle width is the minimum reserved footprint;
+2. compact accepted width may grow reservation up to `islandCompactMaxWidth`;
+3. peek may grow the visual shell beyond compact max **without** growing the reservation;
+4. clearing an event shrinks the shell back to idle;
+5. expanded also reserves only idle footprint because it is an overlay and should not create a huge center-bar hole;
+6. missing/stale per-screen runtime data falls back to initial idle width;
+7. the persisted key `islandReservedWidth` is not mutated for transient runtime requests.
+
+This is a controlled reverse propagation path. Only `IslandDaemon` crosses from presentation policy back to `PluginService`; content remains DI-clean.
 
 ## `IslandPresenter`
 
-The Presenter is the policy/lowering layer between application state and the visual shell.
+The Presenter is the policy/lowering layer. It owns:
 
-It owns:
+- scene selection,
+- optional input injection,
+- requested dimension validation,
+- compact max-width policy,
+- split lowering,
+- visual-change hint lowering,
+- content signal -> controller translation,
+- bar reservation policy,
+- expanded inside-background dismissal.
+
+Final width policy:
 
 ```text
-which content is loaded
-which dimensions are accepted
-how mode affects geometry
+compact  -> clamp(requestedWidth, initialIdleWidth, compactMaximumWidth)
+peek     -> clamp(requestedWidth, initialIdleWidth, maximumWidth)
+expanded -> clamp(requestedWidth, initialIdleWidth, maximumWidth)
 ```
 
-### Dynamic content loading
-
-The Presenter asks the registry for a source and loads it with `Loader`.
-
-After creation it injects:
+Final height policy:
 
 ```text
-eventData
-controller
-```
-
-using dynamic `Binding` objects because `contentLoader.item` does not exist until the Loader has instantiated the content.
-
-### Dimension validation
-
-Content requests pass through `saneDimension()`.
-
-The Presenter performs safe checks and clamps via `saneDimension()`.
-
-### Geometry rules
-
-Final width:
-
-```text
-compact  -> compactWidth
-peek     -> saneDimension(requestedWidth)
-expanded -> saneDimension(requestedWidth)
-```
-
-Final height:
-
-```text
-compact  -> compactHeight
-peek     -> compactHeight
-expanded -> saneDimension(requestedHeight)
+compact  -> Dank Bar height
+peek     -> Dank Bar height
+expanded -> accepted requestedHeight
 ```
 
 ## `DynamicIsland`
 
-`DynamicIsland` is the dumb visual shell.
+`DynamicIsland` is a visual shell. It must not know event types, Java switching, TTL, registry mappings, Dank Bar reservation transport, or payload semantics.
 
-Public input (it receives the final `width`/`height` from the Presenter):
+Current inputs include:
 
 ```qml
 required property real targetWidth
 required property real targetHeight
+required property string mode
+
+property bool splitEnabled
+property real splitPercentage
+property bool contentChangeAnimationEnabled
+property int contentChangeRevision
+property string contentChangeAnimation
 ```
 
-It must not know about event types, TTL, debug, bash etc.
-
-Current responsibilities:
-
-```text
-geometry animation
-ShaderEffect
-content slot
-fallback visual
-```
-
-Future responsibilities may include mostly visual effects.
+It exposes `shapeInset` and the effective target radius so Presenter can provide exact split geometry context without scene files duplicating shell constants.
 
 ## Shader Contract
 
-After shader changes:
+Split geometry in `IslandSplitGeometry.qml` must remain mathematically consistent with `island/shaders/dynamic_island.frag`.
+
+If the shader changes any of these rules, update both together:
+
+- split percentage clamp,
+- split gap,
+- radius lowering,
+- minimum piece width,
+- shape inset semantics.
+
+After changing shader source itself, rebuild the `.qsb` with:
 
 ```bash
-./dev_scripts/build_shaders.sh 
+./dev_scripts/build_shaders.sh
 ```
 
-Shader work should stay in:
-
-```text
-island/shaders/*
-island/DynamicIsland.qml
-```
-
-and should not require event/content changes.
-
-## `IslandWindow`
-
-`IslandWindow` is the Wayland/layer-shell boundary. It owns the Presenter.
-
-The outer surface remains stable while the inner Island changes geometry.
+This refactor only wires existing split uniforms and therefore does not require a new `.qsb` unless the fragment shader source is changed separately.
 
 ## Extension Guide
 
-### Add a new content type
+For a new transient notification:
 
-Example: `volume`.
+1. create `island/content/notifications/FooNotification.qml`,
+2. expose a natural/requested width and optional `preferredSide`,
+3. add semantic type -> payload source to `notificationSourceFor()`,
+4. publish a canonical event with `presentation: "compact"` and optional TTL,
+5. let Idle/Peek templates perform split/overflow policy.
 
-1. Create `island/content/VolumeContent.qml`.
-2. Follow the content contract:
+For a new layout family rather than a notification payload:
 
-   ```qml
-   Item {
-       property var eventData: null
-       property var controller: null
+1. create a scene template,
+2. map it in `sceneSourceFor()` based on mode/event policy,
+3. use optional content outputs/signals rather than reaching into Window/DynamicIsland,
+4. keep backend/service access outside scene/payload QML.
 
-       readonly property real requestedWidth: 260
-       readonly property real requestedHeight: 120
-   }
-   ```
-
-3. Register `"volume"` in `island/core/IslandContentRegistry.qml`.
-4. Push semantic events such as:
-
-   ```js
-   {
-       type: "volume",
-       presentation: "peek",
-       ttl: 1500,
-       payload: {
-           volume: 0.75,
-           muted: false
-       }
-   }
-   ```
-
-### Add a new producer
-
-Convert producer output into the canonical event object and feed it to:
-
-```qml
-bridge.accept(event)
-```
-
-or another adapter that emits `eventReceived(event)`.
-
-### Add another transport
-
-For DBus, sockets, filesystem watchers, Niri IPC-derived events, audio providers, or notification providers, add/extend an adapter at the bridge boundary. The final output should be:
-
-```qml
-root.eventReceived(event)
-```
-
-### Change content transition behavior
-
-For crossfade, dual-loader transitions, delayed reveal, or content morphing, edit:
-
-```text
-island/view/IslandPresenter.qml
-```
+Potential future optional capabilities can be added without breaking old content, for example priority visual hints, progress/state transition hints, focus/keyboard intent for expanded content, or more animation hints. They should stay declarative and be lowered by Presenter/Window rather than interpreted directly by the shader.

@@ -19,36 +19,44 @@ Item {
         onTriggered: root.clear()
     }
 
-    function push(event) {
-        if (!event)
-            return
-
-        // clone the envelope so every push has a fresh object identity and
-        // therefore reliably invalidates bindings even for repeated event types
-        const next = Object.assign({}, event)
-        const presentation = String(next.presentation ?? "peek")
-
+    function normalizedPresentation(value, fallback) {
+        const presentation = String(value ?? fallback ?? "peek")
         switch (presentation) {
             case "compact":
             case "peek":
             case "expanded":
-                root._mode = presentation
-                break
+                return presentation
             default:
-                console.warn("[IslandController] unknown presentation: ", presentation, "- falling back to peek")
-                root._mode = "peek"
-                break
+                console.warn(
+                    "[IslandController] unknown presentation: ",
+                    presentation,
+                    "- falling back to ",
+                    fallback ?? "peek"
+                )
+                return String(fallback ?? "peek")
         }
+    }
+
+    function push(event) {
+        if (!event)
+            return
+
+        const next = Object.assign({}, event)
+        const presentation = root.normalizedPresentation(next.presentation, "peek")
 
         root._currentEvent = next
+        root._mode = presentation
 
         timeoutTimer.stop()
-
         const ttl = Number(next.ttl ?? 0)
         if (Number.isFinite(ttl) && ttl > 0) {
             timeoutTimer.interval = Math.floor(ttl)
             timeoutTimer.start()
         }
+    }
+
+    function requestPresentation(presentation) {
+        root._mode = root.normalizedPresentation(presentation, root._mode)
     }
 
     function clear() {

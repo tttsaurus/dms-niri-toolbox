@@ -133,13 +133,26 @@ PluginSettings {
     SliderSetting {
         settingKey: "islandReservedWidth"
 
-        label: "Island Reserved Width"
-        description: "Reserved center space for Dynamic Island"
+        label: "Island Initial Idle Width"
+        description: "Initial compact/idle width. Active compact content may dynamically reserve more Dank Bar space"
 
         defaultValue: 168
 
         minimum: 80
         maximum: 200
+        unit: "px"
+    }
+
+    SliderSetting {
+        settingKey: "islandCompactMaxWidth"
+
+        label: "Island Compact Max Width"
+        description: "Maximum width compact content may request"
+
+        defaultValue: 360
+
+        minimum: 200
+        maximum: 800
         unit: "px"
     }
 

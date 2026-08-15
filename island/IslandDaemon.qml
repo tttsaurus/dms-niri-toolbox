@@ -10,28 +10,49 @@ PluginComponent {
     id: root
 
     readonly property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? false
-    readonly property int islandReservedWidth: {
+
+    readonly property int islandInitialIdleWidth: {
         const value = Number(pluginData.islandReservedWidth ?? 168)
-        return Number.isFinite(value) ? Math.floor(value) : 168
+        return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 168
+    }
+
+    readonly property int islandCompactMaxWidth: {
+        const value = Number(pluginData.islandCompactMaxWidth ?? 360)
+        const parsed = Number.isFinite(value) ? Math.floor(value) : 360
+        return Math.max(root.islandInitialIdleWidth, parsed)
     }
 
     property int barAnchorRevision: 0
 
     function barAnchorFor(screenName) {
-        // getGlobalVar() is not a reactive QML property
-        // reading the revision makes this function's callers re-evaluate when the published metrics change
+        // getGlobalVar() is not a reactive QML property. Reading the revision
+        // makes callers re-evaluate when the published metrics change
         root.barAnchorRevision
 
         if (!pluginService || !pluginId)
             return null
 
-        const all = pluginService.getGlobalVar(
-            pluginId,
-            "barAnchorGeometry",
-            {}
-        )
+        const all = pluginService.getGlobalVar(pluginId, "barAnchorGeometry", {})
 
         return all[screenName] || null
+    }
+
+    function publishReservation(screenName, width) {
+        if (!root.pluginService || !root.pluginId || !screenName)
+            return
+
+        const number = Number(width)
+        const reservation = Number.isFinite(number) ? Math.max(root.islandInitialIdleWidth, Math.round(number)) : root.islandInitialIdleWidth
+
+        const current = root.pluginService.getGlobalVar(root.pluginId, "islandReservationWidths", {})
+
+        if (Number(current[screenName]) === reservation)
+            return
+
+        const next = Object.assign({}, current)
+        next[screenName] = reservation
+
+        root.pluginService.setGlobalVar(root.pluginId, "islandReservationWidths", next)
     }
 
     Core.IslandController {
@@ -61,7 +82,20 @@ PluginComponent {
         IslandWindow {
             controller: islandController
             barAnchor: root.barAnchorFor(modelData.name)
-            compactWidth: root.islandReservedWidth
+            compactWidth: root.islandInitialIdleWidth
+            compactMaximumWidth: root.islandCompactMaxWidth
+
+            Component.onCompleted: {
+                root.publishReservation(modelData.name, reservationWidth)
+            }
+
+            Component.onDestruction: {
+                root.publishReservation(modelData.name, root.islandInitialIdleWidth)
+            }
+
+            onReservationWidthChanged: {
+                root.publishReservation(modelData.name, reservationWidth)
+            }
         }
     }
 }

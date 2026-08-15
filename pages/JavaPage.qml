@@ -42,6 +42,19 @@ Item {
         statusError = error;
     }
 
+    function publishIslandEvent(event) {
+        const toolbox = root.toolboxRoot
+        if (!toolbox || !toolbox.dynamicIslandEnabled || !toolbox.pluginService || !toolbox.pluginId)
+            return
+
+        toolbox.pluginService.setGlobalVar(toolbox.pluginId, "islandEvent",
+            {
+                token: "java-switch-" + Date.now() + "-" + Math.random(),
+                event: event
+            }
+        )
+    }
+
     function parseJavaInstallations(output) {
         let options = [];
         let pathMap = {};
@@ -141,6 +154,15 @@ Item {
             }
 
             root.setResult(switchStdout.text, false);
+            root.publishIslandEvent({
+                type: "javaVersionSwitch",
+                presentation: "compact",
+                ttl: 3200,
+                payload: {
+                    label: javaDropdown.currentValue || "Java",
+                    javaPath: root.selectedJavaPath
+                }
+            });
         }
     }
 

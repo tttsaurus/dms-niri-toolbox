@@ -15,7 +15,7 @@ Item {
 
     readonly property real piecePadding: 7
     readonly property real idleWidth: Math.max(Number(root.islandContext?.idleWidth ?? 168), 1)
-    readonly property real compactMaximumWidth: Math.max(root.idleWidth, Number(root.islandContext?.compactMaximumWidth ?? root.idleWidth))
+    readonly property real maximumWidth: Math.max(root.idleWidth, Number(root.islandContext?.maximumWidth ?? 4096))
     readonly property real radiusDip: Math.max(Number(root.islandContext?.radiusDip ?? 18), 0)
     readonly property real shapeInset: Math.max(Number(root.islandContext?.shapeInset ?? 5), 0)
 
@@ -29,7 +29,7 @@ Item {
     readonly property var splitPlan: root.hasNotification
         ? splitGeometry.findPlanForPiece(
             root.idleWidth,
-            root.compactMaximumWidth,
+            root.maximumWidth,
             root.radiusDip,
             root.shapeInset,
             root.notificationNaturalWidth,
@@ -42,16 +42,16 @@ Item {
     readonly property bool wantsSplit: root.hasNotification && root.splitPlan.success
     readonly property real splitPercentage: root.wantsSplit ? root.splitPlan.percentage : 0.5
 
-    readonly property real requestedWidth: root.wantsSplit ? root.splitPlan.islandWidth : root.idleWidth
+    readonly property real fallbackWidth: Math.min(root.maximumWidth, Math.max(root.idleWidth, root.clockNaturalWidth + root.notificationNaturalWidth + root.piecePadding * 5))
+
+    readonly property real requestedWidth: root.wantsSplit ? root.splitPlan.islandWidth : root.fallbackWidth
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
-    readonly property real requestedReservationWidth: root.requestedWidth
 
     readonly property bool animateContentChange: root.hasNotification
     readonly property string contentAnimation: "subtle"
     readonly property int animationRevision: _animationRevision
 
     property int _animationRevision: 0
-    property bool _peekPromotionScheduled: false
 
     Core.IslandContentRegistry {
         id: registry
@@ -61,65 +61,27 @@ Item {
         id: splitGeometry
     }
 
-    function relayPresentation(presentation) {
-        root.presentationRequested(presentation)
-    }
-
-    function relayEvent(event) {
-        root.eventRequested(event)
-    }
-
-    function relayClear() {
-        root.clearRequested()
-    }
-
-    function evaluateCompactFit() {
-        if (!root.hasNotification) {
-            root._peekPromotionScheduled = false
-            return
-        }
-
-        if (root.splitPlan.success) {
-            root._peekPromotionScheduled = false
-            return
-        }
-
-        if (root._peekPromotionScheduled)
-            return
-
-        root._peekPromotionScheduled = true
-
-        Qt.callLater(() => {
-            if (root.hasNotification && !root.splitPlan.success)
-                root.presentationRequested("peek")
-            root._peekPromotionScheduled = false
-        })
-    }
-
-    onSplitPlanChanged: root.evaluateCompactFit()
-    onHasNotificationChanged: root.evaluateCompactFit()
-
     Loader {
         id: clockLoader
 
         source: Qt.resolvedUrl("widgets/ClockContent.qml")
         asynchronous: false
 
-        x: root.wantsSplit ? root.splitPlan.otherContentStartOffset : (root.width - width) / 2
+        x: root.wantsSplit ? root.splitPlan.otherContentStartOffset : root.piecePadding * 2
         y: 0
         width: root.wantsSplit ? root.splitPlan.otherContentWidth : root.clockNaturalWidth
         height: root.height
 
         Behavior on x {
             NumberAnimation {
-                duration: 200
+                duration: 220
                 easing.type: Easing.OutQuart
             }
         }
 
         Behavior on width {
             NumberAnimation {
-                duration: 200
+                duration: 220
                 easing.type: Easing.OutQuart
             }
         }
@@ -131,12 +93,12 @@ Item {
         source: root.notificationSource
         asynchronous: false
 
-        visible: root.hasNotification && root.wantsSplit
+        visible: root.hasNotification
         opacity: visible ? 1.0 : 0.0
 
-        x: root.wantsSplit ? root.splitPlan.pieceContentStartOffset : root.width
+        x: root.wantsSplit ? root.splitPlan.pieceContentStartOffset : clockLoader.x + clockLoader.width + root.piecePadding * 2
         y: 0
-        width: root.wantsSplit ? root.splitPlan.pieceContentWidth : 0
+        width: root.wantsSplit ? root.splitPlan.pieceContentWidth : Math.max(root.width - x - root.piecePadding * 2, 0)
         height: root.height
 
         onLoaded: {
@@ -146,7 +108,6 @@ Item {
                 item.controller = root.controller
 
             root._animationRevision++
-            root.evaluateCompactFit()
         }
 
         Behavior on opacity {
@@ -158,7 +119,6 @@ Item {
     }
 
     onEventDataChanged: {
-        root._peekPromotionScheduled = false
         if (notificationLoader.item && typeof notificationLoader.item.eventData !== "undefined")
             notificationLoader.item.eventData = root.eventData
     }
@@ -173,15 +133,15 @@ Item {
         ignoreUnknownSignals: true
 
         function onPresentationRequested(presentation) {
-            root.relayPresentation(presentation)
+            root.presentationRequested(presentation)
         }
 
         function onEventRequested(event) {
-            root.relayEvent(event)
+            root.eventRequested(event)
         }
         
         function onClearRequested() {
-            root.relayClear()
+            root.clearRequested()
         }
     }
 }

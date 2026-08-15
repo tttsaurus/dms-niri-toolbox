@@ -23,9 +23,15 @@ PluginComponent {
 
     readonly property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? false
     
-    readonly property int islandReservedWidth: {
+    readonly property int islandInitialIdleWidth: {
         const value = Number(pluginData.islandReservedWidth ?? 168)
-        return Number.isFinite(value) ? Math.floor(value) : 168
+        return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 168
+    }
+
+    readonly property int islandCompactMaxWidth: {
+        const value = Number(pluginData.islandCompactMaxWidth ?? 360)
+        const parsed = Number.isFinite(value) ? Math.floor(value) : 360
+        return Math.max(root.islandInitialIdleWidth, parsed)
     }
 
     readonly property int islandCompactRadius: {
@@ -156,6 +162,9 @@ PluginComponent {
 
     // ------------------------------------------------------------
 
+    // not a config: live per-screen reservation exported by IslandBarReservation
+    readonly property real islandReservedWidth: islandBarReservation.reservedWidth
+
     property string selectedPage: ""
 
     function isPageEnabled(page) {
@@ -214,9 +223,10 @@ PluginComponent {
     Component.onCompleted: ensureValidPage()
 
     IslandBarReservation {
-        toolboxRoot: root
+        id: islandBarReservation
 
-        reservedWidth: root.islandReservedWidth
+        toolboxRoot: root
+        initialWidth: root.islandInitialIdleWidth
     }
 
     horizontalBarPill: Component {
