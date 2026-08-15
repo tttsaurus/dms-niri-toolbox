@@ -36,7 +36,13 @@ Item {
     readonly property real rawMusicMinimumWidth: Math.max(Number(musicLoader.item?.minimumWidthHint ?? 88), 1)
     readonly property real rawMusicPreferredWidth: Math.max(root.rawMusicMinimumWidth, Number(musicLoader.item?.preferredWidthHint ?? musicLoader.item?.implicitWidth ?? 104))
 
-    property real musicLayoutPresence: root.musicWidgetVisible ? 1.0 : 0.0
+    readonly property real fullBaseSpacing: root.musicWidgetVisible ? root.baseSpacing : 0
+    readonly property real fullMusicMinimumWidth: root.musicWidgetVisible ? root.rawMusicMinimumWidth : 0
+    readonly property real fullMusicPreferredWidth: root.musicWidgetVisible ? root.rawMusicPreferredWidth : 0
+    readonly property real fullBaseNaturalWidth: root.clockPreferredWidth + root.fullBaseSpacing + root.fullMusicPreferredWidth
+    readonly property real fullBaseMinimumWidth: root.clockMinimumWidth + root.fullBaseSpacing + root.fullMusicMinimumWidth
+
+    property real musicLayoutPresence: root.musicWidgetVisible && !root.notificationSuppressesMusic ? 1.0 : 0.0
 
     readonly property real effectiveBaseSpacing: root.baseSpacing * root.musicLayoutPresence
     readonly property real musicMinimumWidth: root.rawMusicMinimumWidth * root.musicLayoutPresence
@@ -52,35 +58,53 @@ Item {
     readonly property string notificationSide: String(notificationLoader.item?.preferredSideHint ?? "right") === "left" ? "left" : "right"
 
     readonly property real baseIslandWidth: Math.min(root.compactMaximumWidth, Math.max(root.idleWidth, root.baseNaturalWidth + root.contentPadding * 2))
+    readonly property real fullBaseIslandWidth: Math.min(root.compactMaximumWidth, Math.max(root.idleWidth, root.fullBaseNaturalWidth + root.contentPadding * 2))
+    readonly property real clockOnlyIslandWidth: Math.min(root.compactMaximumWidth, Math.max(root.idleWidth, root.clockPreferredWidth + root.contentPadding * 2))
 
     readonly property var preferredSplitPlan: root.hasNotification
         ? splitGeometry.findPlanForPiece(
-            root.baseIslandWidth,
+            root.fullBaseIslandWidth,
             root.compactMaximumWidth,
             root.radiusDip,
             root.shapeInset,
             root.notificationPreferredWidth,
             root.notificationSide,
-            root.baseNaturalWidth,
+            root.fullBaseNaturalWidth,
             root.piecePadding
         )
-        : splitGeometry.failedPlan("no notification", root.baseIslandWidth)
+        : splitGeometry.failedPlan("no notification", root.fullBaseIslandWidth)
 
     readonly property var minimumSplitPlan: root.hasNotification && !root.preferredSplitPlan.success
         ? splitGeometry.findPlanForPiece(
-            root.baseIslandWidth,
+            root.fullBaseIslandWidth,
             root.compactMaximumWidth,
             root.radiusDip,
             root.shapeInset,
             root.notificationMinimumWidth,
             root.notificationSide,
-            root.baseMinimumWidth,
+            root.fullBaseMinimumWidth,
             root.piecePadding
         )
         : root.preferredSplitPlan
 
-    readonly property var splitPlan: root.preferredSplitPlan.success? root.preferredSplitPlan : root.minimumSplitPlan
+    readonly property var clockOnlySplitPlan: root.hasNotification && !root.minimumSplitPlan.success
+        ? splitGeometry.findPlanForPiece(
+            root.clockOnlyIslandWidth,
+            root.compactMaximumWidth,
+            root.radiusDip,
+            root.shapeInset,
+            root.notificationMinimumWidth,
+            root.notificationSide,
+            root.clockMinimumWidth,
+            root.piecePadding
+        )
+        : root.minimumSplitPlan
+
+    readonly property var splitPlan: root.preferredSplitPlan.success ? root.preferredSplitPlan : root.minimumSplitPlan.success ? root.minimumSplitPlan : root.clockOnlySplitPlan
+    readonly property bool notificationSuppressesMusic:root.hasNotification && root.musicWidgetVisible && !root.minimumSplitPlan.success && root.clockOnlySplitPlan.success
     readonly property bool wantsSplit: root.hasNotification && root.splitPlan.success
+    readonly property bool usesNotificationFallback: root.hasNotification && !root.splitPlan.success
+    readonly property real notificationFallbackWidth: Math.min(root.compactMaximumWidth, Math.max(root.idleWidth, root.notificationPreferredWidth + root.contentPadding * 2))
     readonly property real splitPercentage: root.wantsSplit ? root.splitPlan.percentage : 0.5
     readonly property var liveLayout: splitGeometry.layoutForSplitProgress(
         root.width,
@@ -113,7 +137,7 @@ Item {
         const available = Math.max(0, root.baseUsableWidth - root.clockAssignedWidth)
         return Math.min(root.musicPreferredWidth, available)
     }
-    readonly property real requestedWidth: root.wantsSplit ? root.splitPlan.islandWidth : root.baseIslandWidth
+    readonly property real requestedWidth: root.wantsSplit ? root.splitPlan.islandWidth : root.usesNotificationFallback ? root.notificationFallbackWidth : root.baseIslandWidth
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
     readonly property real requestedReservationWidth: root.requestedWidth
 
@@ -163,6 +187,7 @@ Item {
         y: 0
         width: root.liveLayout.otherContentWidth
         height: root.height
+        visible: !root.usesNotificationFallback
 
         Row {
             anchors.centerIn: parent
@@ -201,11 +226,12 @@ Item {
         source: root._displayNotificationSource
         asynchronous: false
 
+        readonly property bool usesLiveSplit: root.wantsSplit || root.splitProgress > 0
         visible: opacity > 0.001
-        opacity: root._displayNotificationData && (root.wantsSplit || root.splitProgress > 0) ? root.splitProgress : 0.0
-        x: root.liveLayout.pieceContentStartOffset
+        opacity: !root._displayNotificationData ? 0.0 : usesLiveSplit ? root.splitProgress : root.usesNotificationFallback ? 1.0 : 0.0
+        x: usesLiveSplit ? root.liveLayout.pieceContentStartOffset : root.contentPadding
         y: 0
-        width: root.liveLayout.pieceContentWidth
+        width: usesLiveSplit ? root.liveLayout.pieceContentWidth : Math.max(root.width - root.contentPadding * 2, 0)
         height: root.height
 
         onLoaded: item.notificationData = root._displayNotificationData

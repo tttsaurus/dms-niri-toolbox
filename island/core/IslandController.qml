@@ -105,8 +105,34 @@ Item {
         }
     }
 
+    function isMusicExclusivePresentation(presentation, context) {
+        return presentation === "peek"
+            && String(context?.exclusiveWidgetId ?? "") === "musicTrack"
+    }
+
+    function musicExclusivePeekActive() {
+        return root.isMusicExclusivePresentation(root._mode, root._sceneContext)
+    }
+
+    function notificationWorkPending() {
+        return root._currentNotification !== null
+            || root._suspendedNotification !== null
+            || root._notificationQueue.length > 0
+    }
+
     function notificationPresentationAvailable() {
-        return root._mode === "compact" || root._mode === "peek"
+        return root._mode === "compact" || (root._mode === "peek" && !root.musicExclusivePeekActive())
+    }
+
+    function yieldMusicExclusivePeekToNotification() {
+        if (!root.musicExclusivePeekActive())
+            return
+
+        root.requestScene({
+            presentation: "compact",
+            context: {},
+            notificationPolicy: root._notificationsSuspended ? "resume" : "keep"
+        })
     }
 
     function playNextNotification() {
@@ -126,6 +152,8 @@ Item {
             return
 
         const next = Object.assign({}, notification)
+
+        root.yieldMusicExclusivePeekToNotification()
 
         if (root._notificationsSuspended
                 || !root.notificationPresentationAvailable()
@@ -201,16 +229,20 @@ Item {
     function requestScene(request, legacyContext) {
         const normalizedRequest = typeof request === "string" ? { presentation: request, context: legacyContext ?? ({}) } : Object.assign({}, request ?? ({}))
 
+        const presentation = root.normalizedPresentation(normalizedRequest.presentation, root._mode)
+        const sceneContext = Object.assign({}, normalizedRequest.context ?? ({}))
+        if (root.isMusicExclusivePresentation(presentation, sceneContext) && root.notificationWorkPending())
+            return
+
         sceneTimer.stop()
 
-        const presentation = root.normalizedPresentation(normalizedRequest.presentation, root._mode)
         const policy = root.normalizedNotificationPolicy(normalizedRequest.notificationPolicy, presentation)
 
         if (policy === "suspend")
             root.suspendNotifications()
 
         root._mode = presentation
-        root._sceneContext = Object.assign({}, normalizedRequest.context ?? ({}))
+        root._sceneContext = sceneContext
 
         if (policy === "resume")
             root.resumeNotifications()

@@ -207,7 +207,7 @@ Item {
 
     Behavior on contentReveal {
         NumberAnimation {
-            duration: 320
+            duration: 240
             easing.type: Easing.OutCubic
         }
     }
@@ -247,7 +247,7 @@ Item {
         anchors.centerIn: parent
         spacing: 0
         opacity: root.contentReveal
-        scale: 0.96 + root.contentReveal * 0.04
+        scale: 0.7 + root.contentReveal * 0.3
 
         Item {
             visible: root.detailed
