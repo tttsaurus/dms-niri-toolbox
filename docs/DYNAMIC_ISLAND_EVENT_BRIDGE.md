@@ -143,12 +143,6 @@ A page or feature object that already owns `toolboxRoot` is a normal place for t
 
 `IslandEventBridge.accept(event)` is the direct local ingress for island composition/testing code. Ordinary feature implementations should use `islandEvent` rather than acquiring the Bridge object.
 
-The debug IPC is useful for manual testing:
-
-```text
-dms ipc call toolboxIslandDebug pushJson '<json request>'
-```
-
 ## Scene skeleton interface
 
 Stable inputs:
