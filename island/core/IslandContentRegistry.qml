@@ -28,7 +28,7 @@ QtObject {
     function widgetSourceFor(widgetId) {
         switch (String(widgetId ?? "")) {
             case "clock":
-                return Qt.resolvedUrl("../content/widgets/ClockContent.qml")
+                return Qt.resolvedUrl("../content/widgets/ClockWidget.qml")
             case "musicTrack":
                 return Qt.resolvedUrl("../content/widgets/MusicTrackWidget.qml")
             default:
