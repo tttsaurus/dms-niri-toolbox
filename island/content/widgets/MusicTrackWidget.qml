@@ -56,12 +56,15 @@ Item {
     readonly property real compactNaturalWidth: root.artworkSize + root.waveWidth + root.playButtonVisualSize + root.controlSpacing * 2 + root.rightPadding
 
     readonly property real metadataMaximumWidth: 300
-    readonly property real metadataNaturalWidth: metadataTitle.implicitWidth + (root.trackArtist.length > 0 ? metadataSeparator.implicitWidth + metadataArtist.implicitWidth + metadataRow.spacing * 2 : 0)
+    readonly property real metadataTitleNaturalWidth: metadataTitleMetrics.advanceWidth
+    readonly property real metadataArtistNaturalWidth: root.trackArtist.length > 0 ? metadataArtistMetrics.advanceWidth : 0
+    readonly property real metadataSeparatorNaturalWidth: root.trackArtist.length > 0 ? metadataSeparatorMetrics.advanceWidth : 0
+    readonly property real metadataNaturalWidth: root.metadataTitleNaturalWidth + (root.trackArtist.length > 0 ? root.metadataSeparatorNaturalWidth + root.metadataArtistNaturalWidth + metadataRow.spacing * 2 : 0)
     readonly property real metadataPreferredWidth: Math.min(root.metadataMaximumWidth, Math.max(0, root.metadataNaturalWidth))
     readonly property real metadataMinimumWidth: Math.min(root.metadataPreferredWidth, 92)
     readonly property bool metadataCapped: root.metadataNaturalWidth > root.metadataMaximumWidth
-    readonly property real metadataSeparatorWidth: root.trackArtist.length > 0 ? metadataSeparator.implicitWidth + metadataRow.spacing * 2 : 0
-    readonly property real metadataNaturalTextWidth: metadataTitle.implicitWidth + (root.trackArtist.length > 0 ? metadataArtist.implicitWidth : 0)
+    readonly property real metadataSeparatorWidth: root.trackArtist.length > 0 ? root.metadataSeparatorNaturalWidth + metadataRow.spacing * 2 : 0
+    readonly property real metadataNaturalTextWidth: root.metadataTitleNaturalWidth + root.metadataArtistNaturalWidth
     readonly property real metadataAvailableCappedTextWidth: Math.max(0, Math.min(root.metadataMaximumWidth, metadataBox.width) - root.metadataSeparatorWidth)
     readonly property real availableMetadataWidth: Math.max(0, root.width - root.leftPadding - root.rightPadding - root.artworkSize - root.waveWidth - root.playButtonVisualSize - root.controlSpacing * 2 - root.metadataSpacing)
 
@@ -76,6 +79,24 @@ Item {
 
     property real contentReveal: 0.0
     property real artworkReveal: 0.0
+
+    TextMetrics {
+        id: metadataTitleMetrics
+        font: metadataTitle.font
+        text: root.trackTitle
+    }
+
+    TextMetrics {
+        id: metadataSeparatorMetrics
+        font: metadataSeparator.font
+        text: metadataSeparator.text
+    }
+
+    TextMetrics {
+        id: metadataArtistMetrics
+        font: metadataArtist.font
+        text: root.trackArtist
+    }
 
     signal activated()
     signal statePatchRequested(var patch)
@@ -327,15 +348,15 @@ Item {
 
                     width: {
                         if (!root.metadataCapped)
-                            return implicitWidth
+                            return root.metadataTitleNaturalWidth
 
                         if (root.trackArtist.length === 0)
-                            return Math.min(implicitWidth, root.metadataAvailableCappedTextWidth)
+                            return Math.min(root.metadataTitleNaturalWidth, root.metadataAvailableCappedTextWidth)
 
                         if (root.metadataNaturalTextWidth <= 0)
                             return 0
 
-                        return root.metadataAvailableCappedTextWidth * implicitWidth / root.metadataNaturalTextWidth
+                        return root.metadataAvailableCappedTextWidth * root.metadataTitleNaturalWidth / root.metadataNaturalTextWidth
                     }
                     text: root.trackTitle
                     font.pixelSize: Theme.fontSizeMedium
@@ -368,16 +389,15 @@ Item {
                             return 0
 
                         if (!root.metadataCapped)
-                            return implicitWidth
+                            return root.metadataArtistNaturalWidth
 
                         if (root.metadataNaturalTextWidth <= 0)
                             return 0
 
-                        return root.metadataAvailableCappedTextWidth * implicitWidth / root.metadataNaturalTextWidth
+                        return root.metadataAvailableCappedTextWidth * root.metadataArtistNaturalWidth / root.metadataNaturalTextWidth
                     }
                     text: root.trackArtist
-                    font.pixelSize: Theme.fontSizeMedium * 0.85
-                    font.weight: Font.Bold
+                    font.pixelSize: Theme.fontSizeMedium
                     font.italic: true
                     color: Theme.surfaceVariantText
                     elide: root.metadataCapped ? Text.ElideRight : Text.ElideNone
