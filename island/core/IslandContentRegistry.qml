@@ -3,14 +3,7 @@ import QtQuick
 QtObject {
     id: root
 
-    function sceneSourceFor(mode, event) {
-        const type = String(event?.type ?? "")
-
-        if (mode === "peek" && type === "debugPeek")
-            return Qt.resolvedUrl("../content/DebugPeekContent.qml")
-        if (mode === "expanded" && type === "debugExpanded")
-            return Qt.resolvedUrl("../content/DebugExpandedContent.qml")
-
+    function sceneSourceFor(mode) {
         switch (String(mode)) {
             case "compact":
                 return Qt.resolvedUrl("../content/IdleContent.qml")
@@ -23,11 +16,21 @@ QtObject {
         }
     }
 
-    function notificationSourceFor(event) {
-        const type = String(event?.type ?? "")
-        switch (type) {
+    function notificationSourceFor(notification) {
+        switch (String(notification?.type ?? "")) {
             case "javaVersionSwitch":
                 return Qt.resolvedUrl("../content/notifications/JavaVersionSwitchNotification.qml")
+            default:
+                return ""
+        }
+    }
+
+    function widgetSourceFor(widgetId) {
+        switch (String(widgetId ?? "")) {
+            case "clock":
+                return Qt.resolvedUrl("../content/widgets/ClockContent.qml")
+            case "musicTrack":
+                return Qt.resolvedUrl("../content/widgets/MusicTrackWidget.qml")
             default:
                 return ""
         }

@@ -155,8 +155,8 @@ Item {
 
             root.setResult(switchStdout.text, false);
             root.publishIslandEvent({
+                request: "notification",
                 type: "javaVersionSwitch",
-                presentation: "compact",
                 ttl: 3200,
                 payload: {
                     label: javaDropdown.currentValue || "Java",

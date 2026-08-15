@@ -6,29 +6,22 @@ import qs.Widgets
 Item {
     id: root
 
-    property var eventData: null
-    property var controller: null
+    property var notificationData: null
 
-    readonly property string displayLabel: String(root.eventData?.payload?.label ?? "Java")
+    readonly property string displayLabel: String(root.notificationData?.payload?.label ?? "Java")
 
-    readonly property real requestedWidth: {
-        const override = Number(root.eventData?.payload?.width)
-        if (Number.isFinite(override) && override > 0)
-            return Math.max(112, Math.min(300, override))
-
+    readonly property real minimumWidthHint: 132
+    readonly property real preferredWidthHint: {
         const natural = icon.width + Theme.spacingS + labelText.implicitWidth + Theme.spacingM * 2
-        return Math.max(132, Math.min(260, natural))
+        return Math.max(root.minimumWidthHint, Math.min(260, natural))
     }
-    readonly property real requestedHeight: 36
-    readonly property string preferredSide: "right"
+    readonly property real preferredHeightHint: 36
+    readonly property string preferredSideHint: "right"
+    readonly property string animationHint: "subtle"
     readonly property bool interactive: false
 
-    signal presentationRequested(string presentation)
-    signal eventRequested(var event)
-    signal clearRequested()
-
-    implicitWidth: requestedWidth
-    implicitHeight: requestedHeight
+    implicitWidth: root.preferredWidthHint
+    implicitHeight: root.preferredHeightHint
 
     Row {
         id: contentRow
@@ -40,12 +33,13 @@ Item {
             leftMargin: Theme.spacingM
             rightMargin: Theme.spacingM
         }
+
         spacing: Theme.spacingS
 
         DankIcon {
             id: icon
-            anchors.verticalCenter: parent.verticalCenter
 
+            anchors.verticalCenter: parent.verticalCenter
             name: "coffee"
             size: Theme.iconSize - 3
             color: Theme.primary
@@ -53,15 +47,13 @@ Item {
 
         StyledText {
             id: labelText
-            anchors.verticalCenter: parent.verticalCenter
 
+            anchors.verticalCenter: parent.verticalCenter
             width: Math.max(0, contentRow.width - icon.width - contentRow.spacing)
             text: "Java → " + root.displayLabel
-
             font.pixelSize: Theme.fontSizeSmall
             font.weight: Font.Medium
             color: Theme.surfaceText
-
             elide: Text.ElideRight
             maximumLineCount: 1
         }

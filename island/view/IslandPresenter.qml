@@ -24,13 +24,12 @@ Item {
     }
 
     readonly property real effectiveCompactMaximumWidth: Math.max(root.compactWidth, Math.min(root.maximumWidth, root.compactMaximumWidth))
-
+    
     readonly property real requestedWidth: root.saneDimension(
         root.loadedContent?.requestedWidth,
         root.compactWidth,
         root.controller.mode === "compact" ? root.effectiveCompactMaximumWidth : root.maximumWidth
     )
-
     readonly property real requestedHeight: root.saneDimension(
         root.loadedContent?.requestedHeight,
         root.compactHeight,
@@ -47,10 +46,13 @@ Item {
     }
 
     readonly property bool animateContentChange: root.loadedContent?.animateContentChange === true
-    readonly property string contentAnimation: String(root.loadedContent?.contentAnimation ?? "subtle")
+    readonly property string contentAnimation: String(
+        root.loadedContent?.contentAnimation ?? "subtle"
+    )
     readonly property int contentAnimationRevision: {
         const value = Number(root.loadedContent?.animationRevision ?? 0)
-        return root.contentLoadRevision * 100000 + (Number.isFinite(value) ? Math.floor(value) : 0)
+        return root.contentLoadRevision * 100000
+            + (Number.isFinite(value) ? Math.floor(value) : 0)
     }
 
     readonly property real barReservationWidth: {
@@ -95,30 +97,44 @@ Item {
             if (typeof item[name] !== "undefined")
                 item[name] = value
         } catch (error) {
-            console.warn("[IslandPresenter] failed to inject content property ", name, ": ", error)
+            console.warn(
+                "[IslandPresenter] failed to inject content property ",
+                name,
+                ": ",
+                error
+            )
         }
     }
 
     function syncContentInputs() {
-        root.setOptionalContentProperty("eventData", root.controller.currentEvent)
-        root.setOptionalContentProperty("controller", root.controller)
+        root.setOptionalContentProperty("notificationData", root.controller.currentNotification)
+        root.setOptionalContentProperty("sceneContext", root.controller.sceneContext)
+        root.setOptionalContentProperty("widgetStates", root.controller.widgetStates)
         root.setOptionalContentProperty("islandContext", root.contentContext())
     }
 
-    onCompactWidthChanged: syncContentInputs()
-    onCompactHeightChanged: syncContentInputs()
-    onCompactMaximumWidthChanged: syncContentInputs()
-    onMaximumWidthChanged: syncContentInputs()
-    onMaximumHeightChanged: syncContentInputs()
+    onCompactWidthChanged: root.syncContentInputs()
+    onCompactHeightChanged: root.syncContentInputs()
+    onCompactMaximumWidthChanged: root.syncContentInputs()
+    onMaximumWidthChanged: root.syncContentInputs()
+    onMaximumHeightChanged: root.syncContentInputs()
 
     Connections {
         target: root.controller
 
-        function onCurrentEventChanged() {
+        function onCurrentNotificationChanged() {
+            root.syncContentInputs()
+        }
+
+        function onSceneContextChanged() {
             root.syncContentInputs()
         }
 
         function onModeChanged() {
+            root.syncContentInputs()
+        }
+
+        function onWidgetStatesChanged() {
             root.syncContentInputs()
         }
     }
@@ -161,7 +177,7 @@ Item {
         z: 1
 
         asynchronous: false
-        source: registry.sceneSourceFor(root.controller.mode, root.controller.currentEvent)
+        source: registry.sceneSourceFor(root.controller.mode)
 
         onLoaded: {
             root.contentLoadRevision++
@@ -178,12 +194,16 @@ Item {
         target: root.loadedContent
         ignoreUnknownSignals: true
 
-        function onPresentationRequested(presentation) {
-            root.controller.requestPresentation(presentation)
+        function onSceneRequested(request) {
+            root.controller.requestScene(request)
         }
 
-        function onEventRequested(event) {
-            root.controller.push(event)
+        function onWidgetStatePatchRequested(widgetId, patch) {
+            root.controller.patchWidgetState(widgetId, patch)
+        }
+
+        function onNotificationDismissRequested() {
+            root.controller.dismissCurrentNotification()
         }
 
         function onClearRequested() {

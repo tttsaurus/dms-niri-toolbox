@@ -63,8 +63,7 @@ PluginComponent {
         pluginService: root.pluginService
         pluginId: root.pluginId
 
-        onEventReceived: event => islandController.push(event)
-        onClearRequested: islandController.clear()
+        onRequestReceived: (requestType, request) => islandController.acceptRequest(requestType, request)
     }
 
     Connections {

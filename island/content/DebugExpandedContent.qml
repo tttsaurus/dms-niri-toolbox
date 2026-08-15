@@ -14,15 +14,8 @@ Item {
         return Number.isFinite(number) && number > 0 ? number : fallback
     }
 
-    readonly property real requestedWidth: root.requestedDimension(
-        root.eventData?.payload?.width,
-        520
-    )
-
-    readonly property real requestedHeight: root.requestedDimension(
-        root.eventData?.payload?.height,
-        260
-    )
+    readonly property real requestedWidth: root.requestedDimension(root.eventData?.payload?.width, 520)
+    readonly property real requestedHeight: root.requestedDimension(root.eventData?.payload?.height, 260)
 
     Item {
         anchors {
