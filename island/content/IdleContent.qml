@@ -32,10 +32,17 @@ Item {
 
     readonly property real clockMinimumWidth: Math.max(Number(clockLoader.item?.minimumWidthHint ?? 52), 1)
     readonly property real clockPreferredWidth: Math.max(root.clockMinimumWidth, Number(clockLoader.item?.preferredWidthHint ?? clockLoader.item?.implicitWidth ?? 52))
-    readonly property real musicMinimumWidth: Math.max(Number(musicLoader.item?.minimumWidthHint ?? 102), 1)
-    readonly property real musicPreferredWidth: Math.max(root.musicMinimumWidth, Number(musicLoader.item?.preferredWidthHint ?? musicLoader.item?.implicitWidth ?? 118))
-    readonly property real baseNaturalWidth: root.clockPreferredWidth + root.baseSpacing + root.musicPreferredWidth
-    readonly property real baseMinimumWidth: root.clockMinimumWidth + root.baseSpacing + root.musicMinimumWidth
+    readonly property bool musicWidgetVisible: Boolean(musicLoader.item?.widgetVisible ?? false)
+    readonly property real rawMusicMinimumWidth: Math.max(Number(musicLoader.item?.minimumWidthHint ?? 88), 1)
+    readonly property real rawMusicPreferredWidth: Math.max(root.rawMusicMinimumWidth, Number(musicLoader.item?.preferredWidthHint ?? musicLoader.item?.implicitWidth ?? 104))
+
+    property real musicLayoutPresence: root.musicWidgetVisible ? 1.0 : 0.0
+
+    readonly property real effectiveBaseSpacing: root.baseSpacing * root.musicLayoutPresence
+    readonly property real musicMinimumWidth: root.rawMusicMinimumWidth * root.musicLayoutPresence
+    readonly property real musicPreferredWidth: root.rawMusicPreferredWidth * root.musicLayoutPresence
+    readonly property real baseNaturalWidth: root.clockPreferredWidth + root.effectiveBaseSpacing + root.musicPreferredWidth
+    readonly property real baseMinimumWidth: root.clockMinimumWidth + root.effectiveBaseSpacing + root.musicMinimumWidth
 
     readonly property real notificationPreferredWidth: Math.max(Number(notificationLoader.item?.preferredWidthHint ?? notificationLoader.item?.implicitWidth ?? 0), 0)
     readonly property real splitProgress: Math.max(0, Math.min(1, Number(root.islandContext?.splitProgress ?? 0)))
@@ -86,18 +93,26 @@ Item {
     )
 
     readonly property real baseAvailableWidth: root.liveLayout.otherContentWidth
-    readonly property real baseUsableWidth: Math.max(root.baseAvailableWidth - root.baseSpacing, 0)
+    readonly property real baseUsableWidth: Math.max(root.baseAvailableWidth - root.effectiveBaseSpacing, 0)
     readonly property real baseMinimumPayloadWidth: root.clockMinimumWidth + root.musicMinimumWidth
     readonly property real clockAssignedWidth: {
-        if (root.baseUsableWidth >= root.clockPreferredWidth + root.musicPreferredWidth)
+        const preferredPayloadWidth = root.clockPreferredWidth + root.musicPreferredWidth
+        if (root.baseUsableWidth >= preferredPayloadWidth)
             return root.clockPreferredWidth
-        if (root.baseUsableWidth >= root.baseMinimumPayloadWidth)
-            return Math.min(root.clockPreferredWidth, root.baseUsableWidth - root.musicMinimumWidth)
 
-        const ratio = root.baseMinimumPayloadWidth > 0 ? root.clockMinimumWidth / root.baseMinimumPayloadWidth : 0.5
+        if (root.baseUsableWidth >= root.baseMinimumPayloadWidth)
+            return Math.min(root.clockPreferredWidth, Math.max(root.clockMinimumWidth, root.baseUsableWidth - root.musicMinimumWidth))
+
+        const ratio = root.baseMinimumPayloadWidth > 0 ? root.clockMinimumWidth / root.baseMinimumPayloadWidth : 1.0
         return root.baseUsableWidth * ratio
     }
-    readonly property real musicAssignedWidth: Math.max(0, root.baseUsableWidth - root.clockAssignedWidth)
+    readonly property real musicAssignedWidth: {
+        if (root.musicLayoutPresence <= 0.001)
+            return 0
+
+        const available = Math.max(0, root.baseUsableWidth - root.clockAssignedWidth)
+        return Math.min(root.musicPreferredWidth, available)
+    }
     readonly property real requestedWidth: root.wantsSplit ? root.splitPlan.islandWidth : root.baseIslandWidth
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
     readonly property real requestedReservationWidth: root.requestedWidth
@@ -107,6 +122,13 @@ Item {
     readonly property int animationRevision: _animationRevision
 
     property int _animationRevision: 0
+
+    Behavior on musicLayoutPresence {
+        NumberAnimation {
+            duration: 220
+            easing.type: Easing.OutCubic
+        }
+    }
 
     Core.IslandContentRegistry {
         id: registry
@@ -143,7 +165,7 @@ Item {
 
         Row {
             anchors.centerIn: parent
-            spacing: root.baseSpacing
+            spacing: root.effectiveBaseSpacing
 
             Loader {
                 id: clockLoader
@@ -163,6 +185,9 @@ Item {
                 height: basePiece.height
                 source: registry.widgetSourceFor("musicTrack")
                 asynchronous: false
+                opacity: root.musicLayoutPresence
+                scale: 0.94 + root.musicLayoutPresence * 0.06
+                enabled: root.musicWidgetVisible
 
                 onLoaded: root.syncWidgetInputs()
             }

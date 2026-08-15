@@ -25,6 +25,9 @@ Item {
 
     readonly property string exclusiveWidgetId: String(root.sceneContext?.exclusiveWidgetId ?? "")
     readonly property bool musicExclusive: root.exclusiveWidgetId === "musicTrack"
+    readonly property bool musicWidgetVisible: Boolean(musicLoader.item?.widgetVisible ?? false)
+
+    property real musicPresentationPresence: root.musicExclusive && root.musicWidgetVisible ? 1.0 : 0.0
 
     readonly property url notificationSource: root.musicExclusive ? "" : registry.notificationSourceFor(root.notificationData)
     readonly property bool hasNotification:
@@ -94,6 +97,13 @@ Item {
     readonly property int animationRevision: _animationRevision
 
     property int _animationRevision: 0
+
+    Behavior on musicPresentationPresence {
+        NumberAnimation {
+            duration: 180
+            easing.type: Easing.OutCubic
+        }
+    }
 
     Core.IslandContentRegistry {
         id: registry
@@ -173,7 +183,7 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        visible: root.musicExclusive
+        visible: root.musicExclusive && root.musicWidgetVisible
         enabled: visible
         cursorShape: Qt.PointingHandCursor
 
@@ -186,22 +196,19 @@ Item {
         source: registry.widgetSourceFor("musicTrack")
         asynchronous: false
 
-        visible: opacity > 0.001
-        opacity: root.musicExclusive ? 1.0 : 0.0
+        opacity: root.musicPresentationPresence
+        scale: 0.94 + root.musicPresentationPresence * 0.06
+        enabled: root.musicWidgetVisible
         anchors.centerIn: parent
         width: Math.min(root.musicPreferredWidth, Math.max(root.width - root.contentPadding * 2, 0))
         height: root.height
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 170
-                easing.type: Easing.OutCubic
-            }
-        }
-
         onLoaded: {
             root.syncWidgetInputs()
             root._animationRevision++
+
+            if (root.musicExclusive && !Boolean(item?.widgetVisible ?? false))
+                Qt.callLater(root.leaveExclusiveMusicPeek)
         }
     }
 
@@ -228,6 +235,11 @@ Item {
             root._displayNotificationSource = ""
             root._displayNotificationData = null
         }
+    }
+
+    onMusicWidgetVisibleChanged: {
+        if (root.musicExclusive && !root.musicWidgetVisible)
+            root.leaveExclusiveMusicPeek()
     }
 
     onWidgetStatesChanged: root.syncWidgetInputs()

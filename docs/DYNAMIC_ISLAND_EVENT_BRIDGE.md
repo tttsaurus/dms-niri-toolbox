@@ -206,14 +206,17 @@ property string presentation
 property var widgetState
 ```
 
-Layout/visual hints:
+Availability and layout/visual hints:
 
 ```qml
+readonly property bool widgetVisible
 readonly property real minimumWidthHint
 readonly property real preferredWidthHint
 readonly property real preferredHeightHint
 readonly property bool interactive
 ```
+
+`widgetVisible` is Island semantic availability, not Qt Quick `Item.visible`. A scene keeps the Widget Loader instantiated and reads `widgetVisible` to decide whether the Widget participates in composition. The scene may animate layout presence, opacity, or scale independently. Do not use an ancestor `visible` binding as the Widget availability contract.
 
 Typical semantic intents:
 
@@ -223,11 +226,11 @@ signal statePatchRequested(var patch)
 signal actionRequested(string action, var payload)
 ```
 
-Widgets do not decide island presentation or outer geometry. The hosting scene interprets their intents.
+Widgets do not decide island presentation or outer geometry. The hosting scene interprets their intents. Every Widget exposes `widgetVisible`; a permanently available Widget such as Clock returns `true`, while a state-backed Widget may derive it from its canonical service.
 
 ## Current composition example
 
-Idle composes Clock + Music Track as one Compact piece. An active Notification may be split into the other piece.
+Idle composes Clock + Music Track as one Compact piece when the Music Widget reports `widgetVisible`. Without an active media session, Music contributes no width or spacing and Idle returns to the Clock-only initial width. An active Notification may be split into the other piece.
 
 ```text
 Idle: clock + music [+ notification]
@@ -289,8 +292,8 @@ The producer never chooses the QML file, split percentage, island width, or pres
 
 ### Add a Widget
 
-1. Put the component in `island/content/widgets/`.
+1. Put the component in `island/content/widgets/` and implement the Widget interface, including `widgetVisible`.
 2. Register a stable Widget id in `IslandContentRegistry.widgetSourceFor()`.
-3. Explicitly compose it from each scene skeleton that supports it.
-4. Use `request: "widget"` for persistent state updates.
+3. Explicitly compose it from each scene skeleton that supports it. Keep the Loader instantiated; use `widgetVisible` to animate participation in layout.
+4. Use `request: "widget"` for persistent state updates when the Widget owns Island state, or read an existing canonical service directly when that service already owns the domain state.
 5. Let the hosting scene interpret Widget interaction signals such as `activated()`.

@@ -10,6 +10,7 @@ Item {
     property var widgetState: ({})
     property date now: new Date()
 
+    readonly property bool widgetVisible: true
     readonly property real minimumWidthHint: 52
     readonly property real preferredWidthHint: Math.max(root.minimumWidthHint, clockText.implicitWidth)
     readonly property real preferredHeightHint: 36
