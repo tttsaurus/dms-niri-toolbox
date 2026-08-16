@@ -114,25 +114,8 @@ Item {
         return root.isMusicExclusivePresentation(root._mode, root._sceneContext)
     }
 
-    function notificationWorkPending() {
-        return root._currentNotification !== null
-            || root._suspendedNotification !== null
-            || root._notificationQueue.length > 0
-    }
-
     function notificationPresentationAvailable() {
         return root._mode === "compact" || (root._mode === "peek" && !root.musicExclusivePeekActive())
-    }
-
-    function yieldMusicExclusivePeekToNotification() {
-        if (!root.musicExclusivePeekActive())
-            return
-
-        root.requestScene({
-            presentation: "compact",
-            context: {},
-            notificationPolicy: root._notificationsSuspended ? "resume" : "keep"
-        })
     }
 
     function playNextNotification() {

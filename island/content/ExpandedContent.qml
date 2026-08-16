@@ -20,7 +20,7 @@ Item {
 
     readonly property string widgetId: String(root.sceneContext?.widgetId ?? root.sceneContext?.exclusiveWidgetId ?? "")
     readonly property url widgetSource: registry.widgetSourceFor(root.widgetId)
-    readonly property bool hasWidget: String(root.widgetSource).length > 0 && widgetLoader.status === Loader.Ready
+    readonly property bool hasWidget: String(root.widgetSource).length > 0 && widgetLoader.status === Loader.Ready && Boolean(widgetLoader.item?.widgetVisible ?? false)
 
     function hintedDimension(value, fallback) {
         const number = Number(value)

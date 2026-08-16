@@ -305,6 +305,11 @@ Item {
             root.clearRetainedNotification()
     }
 
+    onMusicExclusiveChanged: {
+        if (root.musicExclusive && !root.musicWidgetVisible)
+            Qt.callLater(root.leaveExclusiveMusicPeek)
+    }
+
     onMusicWidgetVisibleChanged: {
         if (root.musicExclusive && !root.musicWidgetVisible)
             root.leaveExclusiveMusicPeek()

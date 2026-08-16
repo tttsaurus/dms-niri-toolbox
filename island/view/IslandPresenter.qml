@@ -80,7 +80,6 @@ Item {
             root.retainedCompactReservationWidth = root.compactReservationWidth
     }
 
-    property int contentLoadRevision: 0
     width: shell.width
     height: shell.height
 
@@ -164,7 +163,6 @@ Item {
 
         const outgoing = root.activeContentLoader
         root.activeContentLoader = incoming
-        root.contentLoadRevision++
         root.syncContentInputs()
 
         incoming.opacity = 1.0
