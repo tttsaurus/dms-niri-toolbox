@@ -153,7 +153,6 @@ Item {
 
         const next = Object.assign({}, notification)
 
-        root.yieldMusicExclusivePeekToNotification()
 
         if (root._notificationsSuspended
                 || !root.notificationPresentationAvailable()
@@ -231,8 +230,6 @@ Item {
 
         const presentation = root.normalizedPresentation(normalizedRequest.presentation, root._mode)
         const sceneContext = Object.assign({}, normalizedRequest.context ?? ({}))
-        if (root.isMusicExclusivePresentation(presentation, sceneContext) && root.notificationWorkPending())
-            return
 
         sceneTimer.stop()
 

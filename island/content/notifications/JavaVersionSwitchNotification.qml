@@ -13,7 +13,7 @@ Item {
     readonly property real minimumWidthHint: 132
     readonly property real preferredWidthHint: {
         const natural = icon.width + Theme.spacingS + labelText.implicitWidth + Theme.spacingM * 2
-        return Math.max(root.minimumWidthHint, Math.min(260, natural))
+        return Math.max(root.minimumWidthHint, natural)
     }
     readonly property real preferredHeightHint: 36
     readonly property string preferredSideHint: "right"

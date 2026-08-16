@@ -23,6 +23,7 @@ QtObject {
             reason: reason || "unsupported geometry",
             islandWidth: Number(islandWidth) || 0,
             percentage: 0.5,
+            side: "right",
             gap: 0,
             shapeInset: 0,
             leftWidth: 0,
@@ -94,6 +95,7 @@ QtObject {
             reason: "",
             islandWidth: width,
             percentage: normalizedPercentage,
+            side: normalizedSide,
             progress: progress,
             gap: gap,
             shapeInset: inset,
@@ -158,10 +160,10 @@ QtObject {
         let rightWidth
 
         if (normalizedSide === "left") {
-            leftWidth = requestedShapeWidth
+            leftWidth = Math.max(requestedShapeWidth, availableWidth * root.minimumPercentage)
             rightWidth = availableWidth - leftWidth
         } else {
-            rightWidth = requestedShapeWidth
+            rightWidth = Math.max(requestedShapeWidth, availableWidth * root.minimumPercentage)
             leftWidth = availableWidth - rightWidth
         }
 
@@ -192,6 +194,7 @@ QtObject {
             reason: "",
             islandWidth: width,
             percentage: percentage,
+            side: normalizedSide,
             gap: gap,
             shapeInset: inset,
             availableWidth: availableWidth,
@@ -216,6 +219,57 @@ QtObject {
             otherWidth: pieceIsLeft ? rightWidth : leftWidth,
             otherContentWidth: pieceIsLeft ? rightContentWidth : leftContentWidth
         }
+    }
+
+    function findClampedPlanForPiece(
+        minimumIslandWidth,
+        maximumIslandWidth,
+        radiusDip,
+        shapeInset,
+        requestedPieceWidth,
+        side,
+        otherMinimumWidth,
+        piecePadding
+    ) {
+        const preferred = root.findPlanForPiece(
+            minimumIslandWidth,
+            maximumIslandWidth,
+            radiusDip,
+            shapeInset,
+            requestedPieceWidth,
+            side,
+            otherMinimumWidth,
+            piecePadding
+        )
+        if (preferred.success)
+            return preferred
+
+        const maximumWidth = Math.max(Number(maximumIslandWidth) || 0, Math.max(Number(minimumIslandWidth) || 0, 1))
+        const radius = Math.max(Number(radiusDip) || 0, 0)
+        const inset = Math.max(Number(shapeInset) || 0, 0)
+        const padding = Math.max(Number(piecePadding) || 0, 0)
+        const requestedContent = Math.max(Number(requestedPieceWidth) || 0, 0)
+        const otherContent = Math.max(Number(otherMinimumWidth) || 0, 0)
+        const gap = Math.max(inset * 2, 2)
+        const availableWidth = maximumWidth - inset * 2 - gap
+        const minimumPieceWidth = Math.max(radius - inset, 0) * 2 + root.minimumPieceEpsilon
+        const otherRequiredShapeWidth = Math.max(otherContent + padding * 2,minimumPieceWidth)
+        const maximumPieceShapeWidth = Math.min(availableWidth * root.maximumPercentage, availableWidth - otherRequiredShapeWidth)
+
+        if (maximumPieceShapeWidth < minimumPieceWidth)
+            return preferred
+
+        const fittedContentWidth = Math.min(requestedContent, Math.max(maximumPieceShapeWidth - padding * 2, 0))
+        
+        return root.planForPiece(
+            maximumWidth,
+            radius,
+            inset,
+            fittedContentWidth,
+            side,
+            otherContent,
+            padding
+        )
     }
 
     function findPlanForPiece(
@@ -245,19 +299,14 @@ QtObject {
         const minimumAvailableWidth = Math.max(
             requestedShapeWidth + otherRequiredShapeWidth,
             minimumPieceWidth * 2 + root.minimumPieceEpsilon,
-            requestedShapeWidth / root.maximumPercentage
+            requestedShapeWidth / root.maximumPercentage,
+            otherRequiredShapeWidth / root.maximumPercentage
         )
 
         let candidateWidth = Math.max(minimumWidth, Math.ceil(minimumAvailableWidth + inset * 2 + gap))
 
         if (candidateWidth > maximumWidth)
             return root.failedPlan("required island width exceeds the allowed maximum", candidateWidth)
-
-        const maximumAvailableWidth = requestedShapeWidth / root.minimumPercentage
-        const candidateAvailableWidth = candidateWidth - inset * 2 - gap
-
-        if (candidateAvailableWidth > maximumAvailableWidth)
-            return root.failedPlan("requested piece would be below the shader's 10% minimum", candidateWidth)
 
         return root.planForPiece(
             candidateWidth,
