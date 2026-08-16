@@ -47,7 +47,21 @@ awk \
         next
     }
 
-    !skip {
+    skip {
+        next
+    }
+
+    /^[[:space:]]*$/ {
+        trailing_blanks++
+        next
+    }
+
+    {
+        while (trailing_blanks > 0) {
+            print ""
+            trailing_blanks--
+        }
+
         print
     }
 ' "$BASHRC" > "$tmp"
