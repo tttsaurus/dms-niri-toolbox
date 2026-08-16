@@ -57,48 +57,18 @@ Item {
     readonly property real rightPadding: Theme.spacingS * 2
     readonly property real compactNaturalWidth: root.artworkSize + root.controlSpacing + root.waveWidth + root.controlSpacing + root.playButtonVisualSize + root.rightPadding
 
-    readonly property real metadataMaximumWidth: 300
-    readonly property real metadataTitleNaturalWidth: metadataTitleNaturalMetrics.advanceWidth
-    readonly property real metadataArtistNaturalWidth: root.trackArtist.length > 0 ? metadataArtistNaturalMetrics.advanceWidth : 0
-    readonly property real metadataSeparatorNaturalWidth: root.trackArtist.length > 0 ? metadataSeparatorNaturalMetrics.advanceWidth : 0
-    readonly property real metadataSeparatorLayoutWidth: root.trackArtist.length > 0 ? root.metadataSeparatorNaturalWidth + root.metadataInlineSpacing * 2 : 0
-    readonly property real metadataNaturalTextWidth: root.metadataTitleNaturalWidth + root.metadataArtistNaturalWidth
-    readonly property real metadataNaturalLayoutWidth: root.metadataNaturalTextWidth + root.metadataSeparatorLayoutWidth
-    readonly property real metadataNaturalTrailingRightBearing: {
-        const metrics = root.trackArtist.length > 0 ? metadataArtistNaturalMetrics : metadataTitleNaturalMetrics
-        return metrics.advanceWidth - (metrics.tightBoundingRect.x + metrics.tightBoundingRect.width)
-    }
-    readonly property real metadataNaturalVisualWidth: Math.max(0, root.metadataNaturalLayoutWidth - root.metadataNaturalTrailingRightBearing)
-    readonly property bool metadataCapped: root.metadataNaturalVisualWidth > root.metadataMaximumWidth
-    readonly property real metadataMaximumLayoutWidth: Math.max(0, root.metadataMaximumWidth + root.metadataNaturalTrailingRightBearing)
-    readonly property real metadataCappedTextBudget: Math.max(0, root.metadataMaximumLayoutWidth - root.metadataSeparatorLayoutWidth)
-    readonly property real metadataTitleBudget: {
-        if (!root.metadataCapped)
-            return root.metadataTitleNaturalWidth
-        if (root.trackArtist.length === 0)
-            return root.metadataCappedTextBudget
-        if (root.metadataNaturalTextWidth <= 0)
-            return 0
-        return root.metadataCappedTextBudget * root.metadataTitleNaturalWidth / root.metadataNaturalTextWidth
-    }
-    readonly property real metadataArtistBudget: {
-        if (!root.metadataCapped || root.trackArtist.length === 0)
-            return root.metadataArtistNaturalWidth
-        if (root.metadataNaturalTextWidth <= 0)
-            return 0
-        return root.metadataCappedTextBudget * root.metadataArtistNaturalWidth / root.metadataNaturalTextWidth
-    }
-    readonly property real metadataTitleDisplayWidth: metadataTitleDisplayMetrics.advanceWidth
-    readonly property real metadataArtistDisplayWidth: root.trackArtist.length > 0 ? metadataArtistDisplayMetrics.advanceWidth : 0
-    readonly property real metadataDisplayLayoutWidth: root.metadataTitleDisplayWidth + root.metadataSeparatorLayoutWidth + root.metadataArtistDisplayWidth
-    readonly property real metadataDisplayTrailingRightBearing: {
-        const metrics = root.trackArtist.length > 0 ? metadataArtistDisplayMetrics : metadataTitleDisplayMetrics
-        return metrics.advanceWidth - (metrics.tightBoundingRect.x + metrics.tightBoundingRect.width)
-    }
-    readonly property real metadataDisplayedWidth: Math.max(0, root.metadataDisplayLayoutWidth - root.metadataDisplayTrailingRightBearing)
-    readonly property real metadataPreferredWidth: root.metadataDisplayedWidth
+    readonly property real metadataTitleNaturalWidth: metadataTitleMetrics.advanceWidth
+    readonly property real metadataArtistNaturalWidth: root.trackArtist.length > 0 ? metadataArtistMetrics.advanceWidth : 0
+    readonly property real metadataSeparatorWidth: root.trackArtist.length > 0 ? metadataSeparatorMetrics.advanceWidth + root.metadataInlineSpacing * 2 : 0
+    readonly property real metadataTextNaturalWidth: root.metadataTitleNaturalWidth + root.metadataArtistNaturalWidth
+    readonly property real metadataNaturalWidth: root.metadataTextNaturalWidth + root.metadataSeparatorWidth
+    readonly property real metadataPreferredWidth: root.presentation === "peek" ? Math.min(300, root.metadataNaturalWidth) : root.metadataNaturalWidth
     readonly property real metadataMinimumWidth: Math.min(root.metadataPreferredWidth, 92)
     readonly property real detailedFixedWidth: root.leftPadding + root.artworkSize + root.controlSpacing + root.waveWidth + root.metadataSpacing + root.metadataActionSpacing + root.playButtonVisualSize + root.rightPadding
+    readonly property real metadataLayoutWidth: root.detailed ? Math.min(root.metadataPreferredWidth, Math.max(root.width - root.detailedFixedWidth, 0)) : 0
+    readonly property real metadataTextWidth: Math.max(root.metadataLayoutWidth - root.metadataSeparatorWidth, 0)
+    readonly property real metadataTitleWidth: root.trackArtist.length > 0 && root.metadataTextNaturalWidth > 0 ? root.metadataTextWidth * root.metadataTitleNaturalWidth / root.metadataTextNaturalWidth : root.metadataTextWidth
+    readonly property real metadataArtistWidth: root.trackArtist.length > 0 ? Math.max(root.metadataTextWidth - root.metadataTitleWidth, 0) : 0
 
     readonly property real minimumWidthHint: root.detailed ? root.detailedFixedWidth + root.metadataMinimumWidth : root.compactNaturalWidth
     readonly property real preferredWidthHint: root.detailed ? root.detailedFixedWidth + root.metadataPreferredWidth : root.compactNaturalWidth
@@ -109,53 +79,22 @@ Item {
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
 
-    property real contentReveal: 0.0
-    property real artworkReveal: 0.0
-
     TextMetrics {
-        id: metadataTitleNaturalMetrics
+        id: metadataTitleMetrics
         font: metadataTitle.font
         text: root.trackTitle
     }
 
     TextMetrics {
-        id: metadataTitleElideMetrics
-        font: metadataTitle.font
-        text: root.trackTitle
-        elide: root.metadataCapped ? Text.ElideRight : Text.ElideNone
-        elideWidth: root.metadataTitleBudget
-    }
-
-    TextMetrics {
-        id: metadataTitleDisplayMetrics
-        font: metadataTitle.font
-        text: metadataTitleElideMetrics.elidedText
-    }
-
-    TextMetrics {
-        id: metadataSeparatorNaturalMetrics
+        id: metadataSeparatorMetrics
         font: metadataSeparator.font
         text: metadataSeparator.text
     }
 
     TextMetrics {
-        id: metadataArtistNaturalMetrics
+        id: metadataArtistMetrics
         font: metadataArtist.font
         text: root.trackArtist
-    }
-
-    TextMetrics {
-        id: metadataArtistElideMetrics
-        font: metadataArtist.font
-        text: root.trackArtist
-        elide: root.metadataCapped ? Text.ElideRight : Text.ElideNone
-        elideWidth: root.metadataArtistBudget
-    }
-
-    TextMetrics {
-        id: metadataArtistDisplayMetrics
-        font: metadataArtist.font
-        text: metadataArtistElideMetrics.elidedText
     }
 
     signal activated()
@@ -171,66 +110,12 @@ Item {
         root.actionRequested("togglePlaying", {})
     }
 
-    function syncContentReveal() {
-        if (!root.widgetVisible) {
-            root.contentReveal = 0.0
-            root.artworkReveal = 0.0
-            return
-        }
-
-        root.contentReveal = 0.0
-        contentRevealTimer.restart()
-        root.syncArtworkReveal(true)
-    }
-
-    function syncArtworkReveal(deferReveal) {
-        if (!root.widgetVisible || artworkImage.status !== Image.Ready) {
-            root.artworkReveal = 0.0
-            return
-        }
-
-        if (deferReveal) {
-            root.artworkReveal = 0.0
-            artworkRevealTimer.restart()
-        } else {
-            root.artworkReveal = 1.0
-        }
-    }
-
     function resetWave() {
         for (let i = 0; i < waveRepeater.count; ++i) {
             const item = waveRepeater.itemAt(i)
             if (item)
                 item.level = item.idleLevel
         }
-    }
-
-    Behavior on contentReveal {
-        NumberAnimation {
-            duration: 240
-            easing.type: Easing.OutCubic
-        }
-    }
-
-    Behavior on artworkReveal {
-        NumberAnimation {
-            duration: 520
-            easing.type: Easing.OutCubic
-        }
-    }
-
-    Timer {
-        id: contentRevealTimer
-        interval: 1
-        repeat: false
-        onTriggered: root.contentReveal = root.widgetVisible ? 1.0 : 0.0
-    }
-
-    Timer {
-        id: artworkRevealTimer
-        interval: 1
-        repeat: false
-        onTriggered: root.artworkReveal = root.widgetVisible && artworkImage.status === Image.Ready ? 1.0 : 0.0
     }
 
     MouseArea {
@@ -246,8 +131,6 @@ Item {
 
         anchors.centerIn: parent
         spacing: 0
-        opacity: root.contentReveal
-        scale: 0.7 + root.contentReveal * 0.3
 
         Item {
             visible: root.detailed
@@ -281,8 +164,6 @@ Item {
                 mipmap: true
                 sourceSize: Qt.size(Math.max(64, Math.round(root.artworkSize * 4)), Math.max(64, Math.round(root.artworkSize * 4)))
                 visible: false
-
-                onStatusChanged: root.syncArtworkReveal(status === Image.Ready)
             }
 
             Rectangle {
@@ -309,8 +190,7 @@ Item {
                 blurMax: 8
                 blurMultiplier: 0.65
                 autoPaddingEnabled: false
-                opacity: root.artworkReveal
-                scale: 0.06 + root.artworkReveal * 0.94
+                opacity: artworkImage.status === Image.Ready ? 1.0 : 0.0
             }
         }
 
@@ -397,7 +277,7 @@ Item {
             id: metadataBox
 
             visible: root.detailed
-            width: root.detailed ? root.metadataDisplayedWidth : 0
+            width: root.metadataLayoutWidth
             height: root.height
             anchors.verticalCenter: parent.verticalCenter
 
@@ -416,12 +296,12 @@ Item {
 
                     anchors.verticalCenter: parent.verticalCenter
 
-                    width: root.metadataTitleDisplayWidth
-                    text: metadataTitleElideMetrics.elidedText
+                    width: root.metadataTitleWidth
+                    text: root.trackTitle
                     font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.DemiBold
                     color: Theme.surfaceText
-                    elide: Text.ElideNone
+                    elide: Text.ElideRight
                     maximumLineCount: 1
                 }
 
@@ -443,12 +323,12 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     visible: root.trackArtist.length > 0
-                    width: root.metadataArtistDisplayWidth
-                    text: metadataArtistElideMetrics.elidedText
+                    width: root.metadataArtistWidth
+                    text: root.trackArtist
                     font.pixelSize: Theme.fontSizeMedium
                     font.italic: true
                     color: Theme.surfaceVariantText
-                    elide: Text.ElideNone
+                    elide: Text.ElideRight
                     maximumLineCount: 1
                 }
             }
@@ -492,16 +372,8 @@ Item {
         }
     }
 
-    onWidgetVisibleChanged: root.syncContentReveal()
-    onArtworkSourceChanged: {
-        root.artworkReveal = 0.0
-        if (artworkImage.status === Image.Ready)
-            root.syncArtworkReveal(true)
-    }
     onPlayingChanged: {
         if (!root.playing)
             root.resetWave()
     }
-
-    Component.onCompleted: root.syncContentReveal()
 }

@@ -31,8 +31,6 @@ Item {
     readonly property bool musicWidgetVisible: Boolean(musicLoader.item?.widgetVisible ?? false)
 
     property real musicPresentationPresence: root.musicExclusive && root.musicWidgetVisible ? 1.0 : 0.0
-    property real entryCompactWidth: root.idleWidth
-    property bool entryCompactWidthCaptured: false
 
     readonly property url notificationSource: root.musicExclusive ? "" : registry.notificationSourceFor(root.notificationData)
     readonly property bool notificationReady:
@@ -44,6 +42,7 @@ Item {
 
     readonly property real clockPreferredWidth: Math.max(Number(clockLoader.item?.preferredWidthHint ?? clockLoader.item?.implicitWidth ?? 52), 1)
     readonly property real musicPreferredWidth: Math.max(Number(musicLoader.item?.preferredWidthHint ?? musicLoader.item?.implicitWidth ?? 104), 1)
+    readonly property real exclusiveMusicWidth: Math.min(root.musicPreferredWidth, Math.max(root.maximumWidth - root.contentPadding * 2, 0))
     readonly property real baseNaturalWidth: root.clockPreferredWidth + (root.musicWidgetVisible ? root.baseSpacing + root.musicPreferredWidth : 0)
 
     readonly property real notificationPreferredWidth: Math.max(Number(notificationLoader.item?.preferredWidthHint ?? notificationLoader.item?.implicitWidth ?? 0), 0)
@@ -98,7 +97,7 @@ Item {
         ? root.liveLayout.otherContentStartOffset + Math.max((root.liveLayout.otherContentWidth - (root.musicExclusive ? root.clockPreferredWidth : root.baseNaturalWidth)) / 2, 0) 
         : Math.max(root.contentPadding, (root.width - root.baseNaturalWidth) / 2)
     readonly property real requestedWidth: root.musicExclusive
-        ? Math.min(root.maximumWidth, Math.max(root.entryCompactWidth, root.musicPreferredWidth + root.contentPadding * 2))
+        ? Math.min(root.maximumWidth, Math.max(root.idleWidth, root.exclusiveMusicWidth + root.contentPadding * 2))
         : root.normalWidth
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
 
@@ -124,14 +123,6 @@ Item {
 
     Core.IslandSplitGeometry {
         id: splitGeometry
-    }
-
-    function captureEntryCompactWidth() {
-        if (root.entryCompactWidthCaptured || root.width <= 0)
-            return
-
-        root.entryCompactWidth = Math.max(root.idleWidth, root.width)
-        root.entryCompactWidthCaptured = true
     }
 
     function enterExclusiveMusicPeek() {
@@ -204,7 +195,6 @@ Item {
         }
 
         if (musicLoader.item) {
-            musicLoader.item.presentation = root.musicExclusive ? "peek" : "compact"
             musicLoader.item.widgetState = root.widgetStateFor("musicTrack")
             musicLoader.item.hostInset = root.shapeInset
         }
@@ -260,6 +250,13 @@ Item {
         onClicked: root.leaveExclusiveMusicPeek()
     }
 
+    Binding {
+        target: musicLoader.item
+        property: "presentation"
+        value: root.musicExclusive ? "peek" : "compact"
+        when: musicLoader.item !== null
+    }
+
     Loader {
         id: musicLoader
 
@@ -270,20 +267,16 @@ Item {
         scale: root.musicExclusive ? 0.94 + root.musicPresentationPresence * 0.06 : 1.0
         enabled: root.musicWidgetVisible
         x: root.musicExclusive ? (root.width - width) / 2 : root.baseStartOffset + root.clockPreferredWidth + (root.musicWidgetVisible ? root.baseSpacing : 0)
-        width: root.musicExclusive ? Math.min(root.musicPreferredWidth, Math.max(root.width - root.contentPadding * 2, 0)) : (root.musicWidgetVisible ? root.musicPreferredWidth : 0)
+        width: root.musicExclusive ? root.exclusiveMusicWidth : (root.musicWidgetVisible ? root.musicPreferredWidth : 0)
         height: root.height
 
         onLoaded: {
             root.syncWidgetInputs()
-            root._animationRevision++
 
             if (root.musicExclusive && !Boolean(item?.widgetVisible ?? false))
                 Qt.callLater(root.leaveExclusiveMusicPeek)
         }
     }
-
-    onWidthChanged: root.captureEntryCompactWidth()
-    Component.onCompleted: root.captureEntryCompactWidth()
 
     onNotificationDataChanged: {
         if (root.notificationData) {
@@ -304,7 +297,6 @@ Item {
 
     onPeekSplitPlanChanged: Qt.callLater(root.reconcileNotificationPresentation)
     onCompactCandidatePlanChanged: Qt.callLater(root.reconcileNotificationPresentation)
-    onSceneContextChanged: root.syncWidgetInputs()
 
     onSplitProgressChanged: {
         Qt.callLater(root.reconcileNotificationPresentation)
