@@ -21,7 +21,11 @@ Item {
 
     readonly property string widgetId: String(root.sceneContext?.widgetId ?? root.sceneContext?.exclusiveWidgetId ?? "")
     readonly property url widgetSource: registry.widgetSourceFor(root.widgetId)
-    readonly property bool hasWidget: String(root.widgetSource).length > 0 && widgetLoader.status === Loader.Ready && Boolean(widgetLoader.item?.widgetVisible ?? false)
+    readonly property bool hasWidget:
+        String(root.widgetSource).length > 0
+        && String(widgetLoader.source) === String(root.widgetSource)
+        && widgetLoader.status === Loader.Ready
+        && Boolean(widgetLoader.item?.widgetVisible ?? false)
     readonly property bool backOnWidgetActivation: root.sceneContext?.backOnWidgetActivation === true
     readonly property bool backWhenWidgetUnavailable: root.sceneContext?.backWhenWidgetUnavailable === true
 

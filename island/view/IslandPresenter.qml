@@ -168,6 +168,8 @@ Item {
             return
 
         const outgoing = root.activeContentLoader
+
+        root.syncContentItem(incoming.item)
         root.activeContentLoader = incoming
         root.syncContentInputs()
 
