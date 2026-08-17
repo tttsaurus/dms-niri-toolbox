@@ -170,7 +170,7 @@ Item {
         property real interiorGlow: root.animatedIslandInteriorGlow
         property real innerEdgeHighlight: root.animatedIslandInnerEdgeHighlight
         property real enableSplit: root.animatedSplit
-        property real splitPercentage: root.clamp(root.animatedSplitPercentage, 0.1, 0.9)
+        property real splitPercentage: root.clamp(root.animatedSplitPercentage, 0.01, 0.99)
 
         fragmentShader: Qt.resolvedUrl("shaders/dynamic_island.frag.qsb")
 

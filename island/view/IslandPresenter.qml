@@ -43,7 +43,7 @@ Item {
     readonly property bool contentWantsSplit: root.loadedContent?.wantsSplit === true
     readonly property real contentSplitPercentage: {
         const value = Number(root.loadedContent?.splitPercentage ?? 0.5)
-        return Number.isFinite(value) ? Math.max(0.1, Math.min(0.9, value)) : 0.5
+        return Number.isFinite(value) ? Math.max(0.01, Math.min(0.99, value)) : 0.5
     }
     readonly property bool animateContentChange: root.loadedContent?.animateContentChange === true
     readonly property string contentAnimation: String(
