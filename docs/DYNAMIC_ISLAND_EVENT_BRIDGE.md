@@ -38,6 +38,7 @@ Each path has its own permissions. Convenience paths such as Notification and Wi
 ```js
 {
     request: "scene",
+    navigation: "push",              // replace | push | back
     mode: "peek",                    // compact | peek | expanded
     width: 320,                      // optional hint
     height: 200,                     // optional hint
@@ -48,6 +49,14 @@ Each path has its own permissions. Convenience paths such as Notification and Wi
 ```
 
 `width` and `height` are hints. The active scene skeleton owns final composition and geometry.
+
+`navigation` is optional and defaults to `replace`:
+
+- `replace` changes the active scene without changing its history.
+- `push` records the current presentation, context, and Notification-suspension intent before activating the requested scene.
+- `back` ignores presentation/context fields and restores the most recent recorded scene. It reconciles Notification delivery to the restored frame by keeping, suspending, or resuming the existing Notification state; it does not copy Notification queues or Widget state.
+
+A pushed scene with a `ttl` returns through `back`; a replaced scene lease keeps the original Compact fallback. `clear` discards scene history. Scene leases belonging to older history frames are not retained.
 
 `notificationPolicy` is optional:
 
@@ -61,6 +70,7 @@ The public Bridge accepts `mode`. Internally, scene skeletons emit the already-n
 
 ```qml
 root.sceneRequested({
+    navigation: "push",
     presentation: "peek",
     context: {
         exclusiveWidgetId: "musicTrack"
@@ -173,8 +183,11 @@ Semantic requests:
 signal sceneRequested(var request)
 signal widgetStatePatchRequested(string widgetId, var patch)
 signal notificationDismissRequested()
+signal dismissRequested()
 signal clearRequested()
 ```
+
+`dismissRequested()` is history-aware: the Controller returns to the previous scene when one exists and otherwise performs a hard clear. `clearRequested()` always keeps its deterministic hard-clear meaning.
 
 ## Notification interface
 
@@ -228,6 +241,8 @@ signal actionRequested(string action, var payload)
 
 Widgets do not decide island presentation or outer geometry. The hosting scene interprets their intents. Every Widget exposes `widgetVisible`; a permanently available Widget such as Clock returns `true`, while a state-backed Widget may derive it from its canonical service.
 
+`IslandContentRegistry.peekCompanionFor(widgetId)` may associate a focused Peek Widget with a split companion description. The description owns the companion Widget id, side, optional square-piece hint, and an activation Scene request; `PeekContent.qml` remains responsible for planning and animating the split.
+
 ## Current composition example
 
 Idle composes Clock + Music Track as one Compact piece when the Music Widget reports `widgetVisible`. Without an active media session, Music contributes no width or spacing and Idle returns to the Clock-only initial width. An active Notification may be split into the other piece.
@@ -235,17 +250,21 @@ Idle composes Clock + Music Track as one Compact piece when the Music Widget rep
 ```text
 Idle: clock + music [+ notification]
         |
-        | activate music
+        | push focused music
         v
-Peek: music only; Notifications suspended
-        |
-        | activate Peek/music again
-        v
-Idle: suspended Notification resumes with remaining TTL
-      queued Notifications continue FIFO
+Peek: [music track] [music-controls launcher]
+      Notifications suspended
+        |                         |
+        | back                    | push launcher target
+        v                         v
+previous scene              Expanded: music controls
+                                  |
+                                  | activate non-control area / dismiss
+                                  v
+                         Peek: music track + launcher
 ```
 
-Notifications arriving during exclusive Music Peek are retained but not displayed. This is a scene-specific composition rule, not a generic Peek rule.
+The Music Controls Widget places its generic `activated()` MouseArea below its actual media controls. Expanded interprets that intent as `back` when `backOnWidgetActivation` is set, so buttons and the seekbar consume their own interaction while every other Widget area returns to focused Music Peek. Notifications arriving during exclusive Music Peek are retained but not displayed.
 
 ## Extending the island
 

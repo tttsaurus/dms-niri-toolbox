@@ -13,6 +13,7 @@ Item {
     signal sceneRequested(var request)
     signal widgetStatePatchRequested(string widgetId, var patch)
     signal notificationDismissRequested()
+    signal dismissRequested()
     signal clearRequested()
 
     readonly property real piecePadding: 7
@@ -27,23 +28,49 @@ Item {
 
     readonly property string presentationRole: String(root.sceneContext?.presentationRole ?? "")
     readonly property string exclusiveWidgetId: String(root.sceneContext?.exclusiveWidgetId ?? "")
-    readonly property bool musicExclusive: root.exclusiveWidgetId === "musicTrack"
-    readonly property bool musicWidgetVisible: Boolean(musicLoader.item?.widgetVisible ?? false)
+    readonly property bool focusedWidgetActive: root.exclusiveWidgetId.length > 0
+    readonly property string primaryWidgetId: root.focusedWidgetActive ? root.exclusiveWidgetId : "musicTrack"
+    readonly property url primaryWidgetSource: registry.widgetSourceFor(root.primaryWidgetId)
+    readonly property bool primaryWidgetReady:
+        String(root.primaryWidgetSource).length > 0
+        && String(primaryWidgetLoader.source) === String(root.primaryWidgetSource)
+        && primaryWidgetLoader.status === Loader.Ready
+    readonly property bool primaryWidgetVisible: root.primaryWidgetReady && Boolean(primaryWidgetLoader.item?.widgetVisible ?? false)
 
-    property real musicPresentationPresence: root.musicExclusive && root.musicWidgetVisible ? 1.0 : 0.0
+    readonly property var splitCompanionSpec: root.focusedWidgetActive
+        ? (root.sceneContext?.splitCompanion ?? registry.peekCompanionFor(root.exclusiveWidgetId))
+        : null
+    readonly property string splitCompanionWidgetId: String(root.splitCompanionSpec?.widgetId ?? "")
+    readonly property url splitCompanionSource: registry.widgetSourceFor(root.splitCompanionWidgetId)
+    readonly property bool splitCompanionReady:
+        root.focusedWidgetActive
+        && root.splitCompanionWidgetId.length > 0
+        && String(root.splitCompanionSource).length > 0
+        && splitCompanionLoader.status === Loader.Ready
+        && Boolean(splitCompanionLoader.item?.widgetVisible ?? false)
+    readonly property string splitCompanionSide: String(root.splitCompanionSpec?.side ?? "right") === "left" ? "left" : "right"
+    readonly property real splitCompanionPadding: root.shapeInset
+    readonly property real splitCompanionPreferredWidth: Math.max(Number(splitCompanionLoader.item?.preferredWidthHint ?? splitCompanionLoader.item?.implicitWidth ?? 16), 1)
+    readonly property real splitCompanionSquareContentWidth: Math.max(root.requestedHeight - root.shapeInset * 2 - root.splitCompanionPadding * 2, 1)
+    readonly property real splitCompanionRequestedWidth: root.splitCompanionSpec?.square === true
+        ? root.splitCompanionSquareContentWidth
+        : root.splitCompanionPreferredWidth
 
-    readonly property url notificationSource: root.musicExclusive ? "" : registry.notificationSourceFor(root.notificationData)
+    property real focusedPresentationPresence: root.focusedWidgetActive && root.primaryWidgetVisible ? 1.0 : 0.0
+    property bool _focusedBackPending: false
+
+    readonly property url notificationSource: root.focusedWidgetActive ? "" : registry.notificationSourceFor(root.notificationData)
     readonly property bool notificationReady:
-        !root.musicExclusive
+        !root.focusedWidgetActive
         && root.notificationData !== null
         && String(root.notificationSource).length > 0
         && String(root._displayNotificationSource) === String(root.notificationSource)
         && notificationLoader.status === Loader.Ready
 
     readonly property real clockPreferredWidth: Math.max(Number(clockLoader.item?.preferredWidthHint ?? clockLoader.item?.implicitWidth ?? 52), 1)
-    readonly property real musicPreferredWidth: Math.max(Number(musicLoader.item?.preferredWidthHint ?? musicLoader.item?.implicitWidth ?? 104), 1)
-    readonly property real exclusiveMusicWidth: Math.min(root.musicPreferredWidth, Math.max(root.maximumWidth - root.contentPadding * 2, 0))
-    readonly property real baseNaturalWidth: root.clockPreferredWidth + (root.musicWidgetVisible ? root.baseSpacing + root.musicPreferredWidth : 0)
+    readonly property real primaryPreferredWidth: Math.max(Number(primaryWidgetLoader.item?.preferredWidthHint ?? primaryWidgetLoader.item?.implicitWidth ?? 104), 1)
+    readonly property real focusedWidgetWidth: Math.min(root.primaryPreferredWidth, Math.max(root.maximumWidth - root.contentPadding * 2, 0))
+    readonly property real baseNaturalWidth: root.clockPreferredWidth + (root.primaryWidgetVisible ? root.baseSpacing + root.primaryPreferredWidth : 0)
 
     readonly property real notificationPreferredWidth: Math.max(Number(notificationLoader.item?.preferredWidthHint ?? notificationLoader.item?.implicitWidth ?? 0), 0)
     readonly property string notificationSide: String(notificationLoader.item?.preferredSideHint ?? "right") === "left" ? "left" : "right"
@@ -78,8 +105,24 @@ Item {
         )
         : splitGeometry.failedPlan("no notification", root.idleWidth)
 
-    readonly property var splitPlan: root._displaySplitPlan ?? splitGeometry.failedPlan("no display split", root.idleWidth)
-    readonly property bool wantsSplit: !root.musicExclusive && root.notificationData !== null && root.splitPlan.success
+    readonly property var focusedSplitPlan: root.splitCompanionReady
+        ? splitGeometry.findPlanForPiece(
+            root.idleWidth,
+            root.maximumWidth,
+            root.radiusDip,
+            root.shapeInset,
+            root.splitCompanionRequestedWidth,
+            root.splitCompanionSide,
+            root.focusedWidgetWidth,
+            root.splitCompanionPadding
+        )
+        : splitGeometry.failedPlan("no focused companion", root.idleWidth)
+
+    readonly property var notificationSplitPlan: root._displaySplitPlan ?? splitGeometry.failedPlan("no display split", root.idleWidth)
+    readonly property var splitPlan: root.focusedWidgetActive ? root.focusedSplitPlan : root.notificationSplitPlan
+    readonly property bool wantsSplit: root.focusedWidgetActive
+        ? root.splitCompanionReady && root.splitPlan.success
+        : root.notificationData !== null && root.splitPlan.success
     readonly property real splitPercentage: root.splitPlan.success ? root.splitPlan.percentage : 0.5
     readonly property var liveLayout: splitGeometry.layoutForSplitProgress(
         root.width,
@@ -87,17 +130,20 @@ Item {
         root.shapeInset,
         root.liveSplitPercentage,
         root.splitProgress,
-        String(root.splitPlan?.side ?? root.notificationSide),
-        root.piecePadding
+        String(root.splitPlan?.side ?? (root.focusedWidgetActive ? root.splitCompanionSide : root.notificationSide)),
+        root.focusedWidgetActive ? root.splitCompanionPadding : root.piecePadding
     )
+    readonly property real focusedWidgetLayoutWidth: Math.min(root.focusedWidgetWidth, root.liveLayout.otherContentWidth)
 
     readonly property real baseWidth: Math.min(root.maximumWidth, Math.max(root.idleWidth, root.baseNaturalWidth + root.contentPadding * 2))
     readonly property real normalWidth: root.splitPlan.success && (root.notificationReady || root.splitProgress > 0.001) ? root.splitPlan.islandWidth : root.baseWidth
     readonly property real baseStartOffset: root.wantsSplit || root.splitProgress > 0.001 
-        ? root.liveLayout.otherContentStartOffset + Math.max((root.liveLayout.otherContentWidth - (root.musicExclusive ? root.clockPreferredWidth : root.baseNaturalWidth)) / 2, 0) 
+        ? root.liveLayout.otherContentStartOffset + Math.max((root.liveLayout.otherContentWidth - root.baseNaturalWidth) / 2, 0)
         : Math.max(root.contentPadding, (root.width - root.baseNaturalWidth) / 2)
-    readonly property real requestedWidth: root.musicExclusive
-        ? Math.min(root.maximumWidth, Math.max(root.idleWidth, root.exclusiveMusicWidth + root.contentPadding * 2))
+    readonly property real requestedWidth: root.focusedWidgetActive
+        ? (root.focusedSplitPlan.success
+            ? root.focusedSplitPlan.islandWidth
+            : Math.min(root.maximumWidth, Math.max(root.idleWidth, root.focusedWidgetWidth + root.contentPadding * 2)))
         : root.normalWidth
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
 
@@ -110,7 +156,7 @@ Item {
     property var _displayNotificationData: null
     property var _displaySplitPlan: null
 
-    Behavior on musicPresentationPresence {
+    Behavior on focusedPresentationPresence {
         NumberAnimation {
             duration: 180
             easing.type: Easing.OutCubic
@@ -125,26 +171,31 @@ Item {
         id: splitGeometry
     }
 
-    function enterExclusiveMusicPeek() {
+    function enterFocusedWidgetPeek(widgetId) {
+        const id = String(widgetId ?? "")
+        if (id.length === 0)
+            return
+
         root.sceneRequested({
+            navigation: "push",
             presentation: "peek",
             context: {
-                exclusiveWidgetId: "musicTrack"
+                exclusiveWidgetId: id
             },
             notificationPolicy: "suspend"
         })
     }
 
-    function leaveExclusiveMusicPeek() {
-        root.sceneRequested({
-            presentation: "compact",
-            context: {},
-            notificationPolicy: "resume"
-        })
+    function leaveFocusedWidgetPeek() {
+        if (!root.focusedWidgetActive || root._focusedBackPending)
+            return
+
+        root._focusedBackPending = true
+        root.sceneRequested({ navigation: "back" })
     }
 
     function reconcileNotificationPresentation() {
-        if (root.musicExclusive)
+        if (root.focusedWidgetActive)
             return
 
         if (root.notificationReady) {
@@ -194,9 +245,15 @@ Item {
             clockLoader.item.widgetState = root.widgetStateFor("clock")
         }
 
-        if (musicLoader.item) {
-            musicLoader.item.widgetState = root.widgetStateFor("musicTrack")
-            musicLoader.item.hostInset = root.shapeInset
+        if (primaryWidgetLoader.item) {
+            primaryWidgetLoader.item.widgetState = root.widgetStateFor(root.primaryWidgetId)
+            if (typeof primaryWidgetLoader.item.hostInset !== "undefined")
+                primaryWidgetLoader.item.hostInset = root.shapeInset
+        }
+
+        if (splitCompanionLoader.item) {
+            splitCompanionLoader.item.presentation = "peek"
+            splitCompanionLoader.item.widgetState = root.widgetStateFor(root.splitCompanionWidgetId)
         }
     }
 
@@ -207,7 +264,7 @@ Item {
         asynchronous: false
 
         visible: opacity > 0.001
-        opacity: root.musicExclusive ? 0.0 : 1.0
+        opacity: root.focusedWidgetActive ? 0.0 : 1.0
         x: root.baseStartOffset
         y: 0
         width: root.clockPreferredWidth
@@ -243,39 +300,62 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        visible: root.musicExclusive && root.musicWidgetVisible
+        z: 0
+        visible: root.focusedWidgetActive && root.primaryWidgetVisible
         enabled: visible
         cursorShape: Qt.PointingHandCursor
 
-        onClicked: root.leaveExclusiveMusicPeek()
+        onClicked: root.leaveFocusedWidgetPeek()
     }
 
     Binding {
-        target: musicLoader.item
+        target: primaryWidgetLoader.item
         property: "presentation"
-        value: root.musicExclusive ? "peek" : "compact"
-        when: musicLoader.item !== null
+        value: root.focusedWidgetActive ? "peek" : "compact"
+        when: primaryWidgetLoader.item !== null
     }
 
     Loader {
-        id: musicLoader
+        id: primaryWidgetLoader
 
-        source: registry.widgetSourceFor("musicTrack")
+        source: root.primaryWidgetSource
         asynchronous: false
 
-        opacity: root.musicExclusive ? root.musicPresentationPresence : (root.musicWidgetVisible ? 1.0 : 0.0)
-        scale: root.musicExclusive ? 0.94 + root.musicPresentationPresence * 0.06 : 1.0
-        enabled: root.musicWidgetVisible
-        x: root.musicExclusive ? (root.width - width) / 2 : root.baseStartOffset + root.clockPreferredWidth + (root.musicWidgetVisible ? root.baseSpacing : 0)
-        width: root.musicExclusive ? root.exclusiveMusicWidth : (root.musicWidgetVisible ? root.musicPreferredWidth : 0)
+        opacity: root.focusedWidgetActive ? root.focusedPresentationPresence : (root.primaryWidgetVisible ? 1.0 : 0.0)
+        scale: root.focusedWidgetActive ? 0.94 + root.focusedPresentationPresence * 0.06 : 1.0
+        enabled: root.primaryWidgetVisible
+        z: 1
+        x: root.focusedWidgetActive
+            ? root.liveLayout.otherContentStartOffset + Math.max((root.liveLayout.otherContentWidth - width) / 2, 0)
+            : root.baseStartOffset + root.clockPreferredWidth + (root.primaryWidgetVisible ? root.baseSpacing : 0)
+        width: root.focusedWidgetActive ? root.focusedWidgetLayoutWidth : (root.primaryWidgetVisible ? root.primaryPreferredWidth : 0)
         height: root.height
 
         onLoaded: {
             root.syncWidgetInputs()
 
-            if (root.musicExclusive && !Boolean(item?.widgetVisible ?? false))
-                Qt.callLater(root.leaveExclusiveMusicPeek)
+            if (root.focusedWidgetActive && !Boolean(item?.widgetVisible ?? false))
+                Qt.callLater(root.leaveFocusedWidgetPeek)
         }
+    }
+
+    Loader {
+        id: splitCompanionLoader
+
+        source: root.splitCompanionSource
+        asynchronous: false
+
+        visible: opacity > 0.001
+        opacity: root.splitCompanionReady ? root.focusedPresentationPresence * root.splitProgress : 0.0
+        scale: 0.86 + root.splitProgress * 0.14
+        enabled: root.splitCompanionReady && root.splitProgress > 0.9
+        z: 2
+        x: root.liveLayout.pieceContentStartOffset
+        y: 0
+        width: root.splitPlan.success ? root.liveLayout.pieceContentWidth : 0
+        height: root.height
+
+        onLoaded: root.syncWidgetInputs()
     }
 
     onNotificationDataChanged: {
@@ -305,31 +385,50 @@ Item {
             root.clearRetainedNotification()
     }
 
-    onMusicExclusiveChanged: {
-        if (root.musicExclusive && !root.musicWidgetVisible)
-            Qt.callLater(root.leaveExclusiveMusicPeek)
+    onFocusedWidgetActiveChanged: {
+        root.syncWidgetInputs()
+        if (root.focusedWidgetActive) {
+            root._focusedBackPending = false
+            if (root.primaryWidgetReady && !root.primaryWidgetVisible)
+                Qt.callLater(root.leaveFocusedWidgetPeek)
+        }
     }
 
-    onMusicWidgetVisibleChanged: {
-        if (root.musicExclusive && !root.musicWidgetVisible)
-            root.leaveExclusiveMusicPeek()
+    onPrimaryWidgetVisibleChanged: {
+        if (root.focusedWidgetActive && root.primaryWidgetReady && !root.primaryWidgetVisible)
+            root.leaveFocusedWidgetPeek()
     }
 
     onWidgetStatesChanged: root.syncWidgetInputs()
 
     Connections {
-        target: musicLoader.item
+        target: splitCompanionLoader.item
         ignoreUnknownSignals: true
 
         function onActivated() {
-            if (root.musicExclusive)
-                root.leaveExclusiveMusicPeek()
-            else
-                root.enterExclusiveMusicPeek()
+            const request = root.splitCompanionSpec?.activationRequest
+            if (request)
+                root.sceneRequested(Object.assign({}, request))
         }
 
         function onStatePatchRequested(patch) {
-            root.widgetStatePatchRequested("musicTrack", patch)
+            root.widgetStatePatchRequested(root.splitCompanionWidgetId, patch)
+        }
+    }
+
+    Connections {
+        target: primaryWidgetLoader.item
+        ignoreUnknownSignals: true
+
+        function onActivated() {
+            if (root.focusedWidgetActive)
+                root.leaveFocusedWidgetPeek()
+            else
+                root.enterFocusedWidgetPeek(root.primaryWidgetId)
+        }
+
+        function onStatePatchRequested(patch) {
+            root.widgetStatePatchRequested(root.primaryWidgetId, patch)
         }
     }
 }

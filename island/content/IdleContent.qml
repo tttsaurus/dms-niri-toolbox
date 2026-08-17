@@ -13,6 +13,7 @@ Item {
     signal sceneRequested(var request)
     signal widgetStatePatchRequested(string widgetId, var patch)
     signal notificationDismissRequested()
+    signal dismissRequested()
     signal clearRequested()
 
     readonly property real piecePadding: 7
@@ -231,6 +232,7 @@ Item {
 
         function onActivated() {
             root.sceneRequested({
+                navigation: "push",
                 presentation: "peek",
                 context: {
                     exclusiveWidgetId: "musicTrack"

@@ -31,8 +31,36 @@ QtObject {
                 return Qt.resolvedUrl("../content/widgets/ClockWidget.qml")
             case "musicTrack":
                 return Qt.resolvedUrl("../content/widgets/MusicTrackWidget.qml")
+            case "musicControlsLauncher":
+                return Qt.resolvedUrl("../content/widgets/MusicControlsLauncherWidget.qml")
+            case "musicControls":
+                return Qt.resolvedUrl("../content/widgets/MusicControlsWidget.qml")
             default:
                 return ""
+        }
+    }
+
+    function peekCompanionFor(widgetId) {
+        switch (String(widgetId ?? "")) {
+            case "musicTrack":
+                return {
+                    widgetId: "musicControlsLauncher",
+                    side: "right",
+                    square: true,
+                    activationRequest: {
+                        navigation: "push",
+                        presentation: "expanded",
+                        context: {
+                            widgetId: "musicControls",
+                            title: "Music",
+                            backOnWidgetActivation: true,
+                            backWhenWidgetUnavailable: true
+                        },
+                        notificationPolicy: "keep"
+                    }
+                }
+            default:
+                return null
         }
     }
 }

@@ -16,11 +16,16 @@ Item {
     signal sceneRequested(var request)
     signal widgetStatePatchRequested(string widgetId, var patch)
     signal notificationDismissRequested()
+    signal dismissRequested()
     signal clearRequested()
 
     readonly property string widgetId: String(root.sceneContext?.widgetId ?? root.sceneContext?.exclusiveWidgetId ?? "")
     readonly property url widgetSource: registry.widgetSourceFor(root.widgetId)
     readonly property bool hasWidget: String(root.widgetSource).length > 0 && widgetLoader.status === Loader.Ready && Boolean(widgetLoader.item?.widgetVisible ?? false)
+    readonly property bool backOnWidgetActivation: root.sceneContext?.backOnWidgetActivation === true
+    readonly property bool backWhenWidgetUnavailable: root.sceneContext?.backWhenWidgetUnavailable === true
+
+    property bool _backPending: false
 
     function hintedDimension(value, fallback) {
         const number = Number(value)
@@ -53,6 +58,24 @@ Item {
 
         widgetLoader.item.presentation = "expanded"
         widgetLoader.item.widgetState = root.widgetStateFor(root.widgetId)
+    }
+
+    function requestBack() {
+        if (root._backPending)
+            return
+
+        root._backPending = true
+        root.sceneRequested({ navigation: "back" })
+    }
+
+    function reconcileWidgetAvailability() {
+        if (!root.backWhenWidgetUnavailable
+                || widgetLoader.status !== Loader.Ready
+                || !widgetLoader.item
+                || String(widgetLoader.source) !== String(root.widgetSource)
+                || Boolean(widgetLoader.item.widgetVisible)) return
+
+        Qt.callLater(root.requestBack)
     }
 
     Item {
@@ -107,7 +130,7 @@ Item {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: root.clearRequested()
+                    onClicked: root.dismissRequested()
                 }
             }
         }
@@ -127,7 +150,10 @@ Item {
             asynchronous: false
             visible: root.hasWidget
 
-            onLoaded: root.syncWidgetInputs()
+            onLoaded: {
+                root.syncWidgetInputs()
+                root.reconcileWidgetAvailability()
+            }
         }
 
         StyledText {
@@ -147,11 +173,24 @@ Item {
     }
 
     onWidgetStatesChanged: root.syncWidgetInputs()
-    onSceneContextChanged: root.syncWidgetInputs()
+    onSceneContextChanged: {
+        root._backPending = false
+        root.syncWidgetInputs()
+        root.reconcileWidgetAvailability()
+    }
 
     Connections {
         target: widgetLoader.item
         ignoreUnknownSignals: true
+
+        function onActivated() {
+            if (root.backOnWidgetActivation)
+                root.requestBack()
+        }
+
+        function onWidgetVisibleChanged() {
+            root.reconcileWidgetAvailability()
+        }
 
         function onStatePatchRequested(patch) {
             root.widgetStatePatchRequested(root.widgetId, patch)

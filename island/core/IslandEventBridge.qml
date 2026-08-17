@@ -38,6 +38,7 @@ Item {
         const ttl = root.positiveFinite(event.ttl, 0)
 
         return {
+            navigation: String(event.navigation ?? "replace"),
             presentation: String(event.presentation ?? event.mode ?? "peek"),
             context: context,
             notificationPolicy: String(event.notificationPolicy ?? ""),
@@ -59,6 +60,7 @@ Item {
                 || event.widthHint != null
                 || event.height != null
                 || event.heightHint != null
+                || event.navigation != null
                 || event.notificationPolicy != null) {
 
             console.warn("[IslandEventBridge] notification request ignores scene presentation/geometry fields")

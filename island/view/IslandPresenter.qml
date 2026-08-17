@@ -229,7 +229,7 @@ Item {
         visible: root.controller.mode === "expanded"
         enabled: visible
 
-        onClicked: root.controller.clear()
+        onClicked: root.controller.dismissScene()
     }
 
     Loader {
@@ -316,6 +316,10 @@ Item {
 
         function onNotificationDismissRequested() {
             root.controller.dismissCurrentNotification()
+        }
+
+        function onDismissRequested() {
+            root.controller.dismissScene()
         }
         
         function onClearRequested() {

@@ -13,9 +13,12 @@ Item {
     readonly property int queuedNotificationCount: _notificationQueue.length
     readonly property bool notificationsSuspended: _notificationsSuspended
     readonly property var widgetStates: _widgetStates
+    readonly property int sceneHistoryDepth: _sceneHistory.length
 
     property string _mode: "compact"
     property var _sceneContext: ({})
+    property var _sceneHistory: []
+    property bool _sceneLeaseReturnsBack: false
 
     property var _currentNotification: null
     property var _notificationQueue: []
@@ -55,6 +58,23 @@ Item {
                     fallback ?? "compact"
                 )
                 return String(fallback ?? "compact")
+        }
+    }
+
+    function normalizedNavigation(value) {
+        const navigation = String(value ?? "replace")
+        switch (navigation) {
+            case "replace":
+            case "push":
+            case "back":
+                return navigation
+            default:
+                console.warn(
+                    "[IslandController] unknown scene navigation: ",
+                    navigation,
+                    "- using replace"
+                )
+                return "replace"
         }
     }
 
@@ -105,17 +125,17 @@ Item {
         }
     }
 
-    function isMusicExclusivePresentation(presentation, context) {
+    function isExclusivePresentation(presentation, context) {
         return presentation === "peek"
-            && String(context?.exclusiveWidgetId ?? "") === "musicTrack"
+            && String(context?.exclusiveWidgetId ?? "").length > 0
     }
 
-    function musicExclusivePeekActive() {
-        return root.isMusicExclusivePresentation(root._mode, root._sceneContext)
+    function exclusivePeekActive() {
+        return root.isExclusivePresentation(root._mode, root._sceneContext)
     }
 
     function notificationPresentationAvailable() {
-        return root._mode === "compact" || (root._mode === "peek" && !root.musicExclusivePeekActive())
+        return root._mode === "compact" || (root._mode === "peek" && !root.exclusivePeekActive())
     }
 
     function playNextNotification() {
@@ -208,15 +228,29 @@ Item {
         root._notificationDeadline = 0
     }
 
-    function requestScene(request, legacyContext) {
-        const normalizedRequest = typeof request === "string" ? { presentation: request, context: legacyContext ?? ({}) } : Object.assign({}, request ?? ({}))
+    function currentSceneFrame() {
+        return {
+            presentation: root._mode,
+            context: Object.assign({}, root._sceneContext),
+            notificationsSuspended: root._notificationsSuspended
+        }
+    }
 
-        const presentation = root.normalizedPresentation(normalizedRequest.presentation, root._mode)
-        const sceneContext = Object.assign({}, normalizedRequest.context ?? ({}))
+    function notificationPolicyForFrame(frame) {
+        const suspended = Boolean(frame?.notificationsSuspended)
+        if (suspended === root._notificationsSuspended)
+            return "keep"
+        return suspended ? "suspend" : "resume"
+    }
+
+    function applySceneRequest(request, leaseReturnsBack) {
+        const presentation = root.normalizedPresentation(request.presentation, root._mode)
+        const sceneContext = Object.assign({}, request.context ?? ({}))
 
         sceneTimer.stop()
+        root._sceneLeaseReturnsBack = false
 
-        const policy = root.normalizedNotificationPolicy(normalizedRequest.notificationPolicy, presentation)
+        const policy = root.normalizedNotificationPolicy(request.notificationPolicy, presentation)
 
         if (policy === "suspend")
             root.suspendNotifications()
@@ -229,14 +263,73 @@ Item {
         else
             root.playNextNotification()
 
-        const ttl = Number(normalizedRequest.ttl ?? 0)
+        const ttl = Number(request.ttl ?? 0)
         if (Number.isFinite(ttl) && ttl > 0) {
+            root._sceneLeaseReturnsBack = Boolean(leaseReturnsBack)
             sceneTimer.interval = Math.floor(ttl)
             sceneTimer.start()
         }
     }
 
+    function requestScene(request, legacyContext) {
+        const normalizedRequest = typeof request === "string"
+            ? { presentation: request, context: legacyContext ?? ({}) }
+            : Object.assign({}, request ?? ({}))
+        const navigation = root.normalizedNavigation(normalizedRequest.navigation)
+
+        if (navigation === "back") {
+            root.navigateBack()
+            return
+        }
+
+        if (navigation === "push") {
+            const history = root._sceneHistory.slice()
+            history.push(root.currentSceneFrame())
+            root._sceneHistory = history
+        }
+
+        root.applySceneRequest(normalizedRequest, navigation === "push")
+    }
+
+    function navigateBack() {
+        sceneTimer.stop()
+        root._sceneLeaseReturnsBack = false
+
+        if (root._sceneHistory.length === 0) {
+            root.applySceneRequest({
+                presentation: "compact",
+                context: {},
+                notificationPolicy: root._notificationsSuspended ? "resume" : "keep"
+            }, false)
+            return
+        }
+
+        const history = root._sceneHistory.slice()
+        const frame = history.pop()
+        root._sceneHistory = history
+
+        root.applySceneRequest({
+            presentation: frame.presentation,
+            context: frame.context,
+            notificationPolicy: root.notificationPolicyForFrame(frame)
+        }, false)
+    }
+
+    function dismissScene() {
+        if (root._sceneHistory.length > 0) {
+            root.navigateBack()
+            return
+        }
+
+        root.clear()
+    }
+
     function finishSceneLease() {
+        if (root._sceneLeaseReturnsBack && root._sceneHistory.length > 0) {
+            root.navigateBack()
+            return
+        }
+
         root.requestScene({
             presentation: "compact",
             context: {},
@@ -307,6 +400,8 @@ Item {
 
     function clear() {
         sceneTimer.stop()
+        root._sceneLeaseReturnsBack = false
+        root._sceneHistory = []
         root.clearNotifications()
         root._sceneContext = ({})
         root._mode = "compact"

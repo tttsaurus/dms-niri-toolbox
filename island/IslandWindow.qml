@@ -60,7 +60,7 @@ PanelWindow {
         visible: root.islandExpanded
         enabled: root.islandExpanded
 
-        onClicked: root.controller.clear()
+        onClicked: root.controller.dismissScene()
     }
 
     View.IslandPresenter {
