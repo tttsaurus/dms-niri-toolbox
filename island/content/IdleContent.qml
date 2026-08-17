@@ -140,6 +140,7 @@ Item {
             musicLoader.item.presentation = "compact"
             musicLoader.item.widgetState = root.widgetStateFor("musicTrack")
             musicLoader.item.hostInset = root.shapeInset
+            musicLoader.item.hostHeight = root.requestedHeight
         }
     }
 

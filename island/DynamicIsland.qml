@@ -17,6 +17,9 @@ Item {
 
     readonly property real shapeInset: 5.0
     readonly property real targetRadius: root._targetRadius
+    readonly property int geometryAnimationDuration: 260
+
+    property bool _geometryReady: false
 
     readonly property int islandCompactRadius: {
         const value = Number(pluginData.islandCompactRadius ?? 18)
@@ -33,6 +36,36 @@ Item {
 
     function clamp(value, minValue, maxValue) {
         return Math.max(minValue, Math.min(maxValue, value))
+    }
+
+    function scheduleGeometryCommit() {
+        if (root._geometryReady)
+            geometryCommitTimer.restart()
+    }
+
+    function commitGeometry(animated) {
+        const nextWidth = Number(root.targetWidth)
+        const nextHeight = Number(root.targetHeight)
+        if (!Number.isFinite(nextWidth) || nextWidth <= 0
+                || !Number.isFinite(nextHeight) || nextHeight <= 0) return
+
+        geometryCommitTimer.stop()
+        geometryAnimation.stop()
+
+        if (!animated || root.width <= 0 || root.height <= 0) {
+            root.width = nextWidth
+            root.height = nextHeight
+            return
+        }
+
+        if (Math.abs(root.width - nextWidth) < 0.01
+                && Math.abs(root.height - nextHeight) < 0.01) return
+
+        widthTransition.from = root.width
+        widthTransition.to = nextWidth
+        heightTransition.from = root.height
+        heightTransition.to = nextHeight
+        geometryAnimation.restart()
     }
 
     readonly property real _targetRadius: {
@@ -106,20 +139,39 @@ Item {
         running: root.visible
     }
 
-    width: targetWidth
-    height: targetHeight
+    width: 0
+    height: 0
     clip: true
 
-    Behavior on width {
-        NumberAnimation {
-            duration: 240
-            easing.type: Easing.OutQuart
-        }
+    onTargetWidthChanged: root.scheduleGeometryCommit()
+    onTargetHeightChanged: root.scheduleGeometryCommit()
+
+    Timer {
+        id: geometryCommitTimer
+
+        interval: 0
+        repeat: false
+        onTriggered: root.commitGeometry(true)
     }
 
-    Behavior on height {
+    ParallelAnimation {
+        id: geometryAnimation
+
         NumberAnimation {
-            duration: 280
+            id: widthTransition
+
+            target: root
+            property: "width"
+            duration: root.geometryAnimationDuration
+            easing.type: Easing.OutQuart
+        }
+
+        NumberAnimation {
+            id: heightTransition
+
+            target: root
+            property: "height"
+            duration: root.geometryAnimationDuration
             easing.type: Easing.OutQuart
         }
     }
@@ -185,5 +237,10 @@ Item {
         anchors.fill: parent
         opacity: 1.0
         scale: 1.0
+    }
+
+    Component.onCompleted: {
+        root._geometryReady = true
+        root.commitGeometry(false)
     }
 }

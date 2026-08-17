@@ -13,6 +13,7 @@ Item {
     property var widgetState: ({})
     // visual host metric supplied by the composing scene
     property real hostInset: 5
+    property real hostHeight: 0
 
     readonly property MprisPlayer player: MprisController.activePlayer
     readonly property bool widgetVisible: root.player !== null && root.player.playbackState !== MprisPlaybackState.Stopped
@@ -40,7 +41,12 @@ Item {
     }
     readonly property url artworkSource: TrackArtService.resolvedArtUrl
 
-    readonly property real effectiveHostHeight: root.height > 1 ? root.height : 36
+    readonly property real effectiveHostHeight: {
+        const hintedHeight = Number(root.hostHeight)
+        if (Number.isFinite(hintedHeight) && hintedHeight > 1)
+            return hintedHeight
+        return root.height > 1 ? root.height : 36
+    }
     readonly property real controlInset: Math.max(3, Math.min(Number(root.hostInset) || 5, root.effectiveHostHeight * 0.24))
     readonly property real availableControlHeight: Math.max(14, root.effectiveHostHeight - root.controlInset * 2)
     readonly property real artworkSize: Math.max(14, root.availableControlHeight * 0.72)
@@ -301,6 +307,7 @@ Item {
                     font.pixelSize: Theme.fontSizeMedium
                     font.weight: Font.DemiBold
                     color: Theme.surfaceText
+                    wrapMode: Text.NoWrap
                     elide: Text.ElideRight
                     maximumLineCount: 1
                 }
@@ -328,6 +335,7 @@ Item {
                     font.pixelSize: Theme.fontSizeMedium
                     font.italic: true
                     color: Theme.surfaceVariantText
+                    wrapMode: Text.NoWrap
                     elide: Text.ElideRight
                     maximumLineCount: 1
                 }

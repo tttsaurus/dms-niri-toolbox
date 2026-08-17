@@ -133,7 +133,7 @@ Item {
         String(root.splitPlan?.side ?? (root.focusedWidgetActive ? root.splitCompanionSide : root.notificationSide)),
         root.focusedWidgetActive ? root.splitCompanionPadding : root.piecePadding
     )
-    readonly property real focusedWidgetLayoutWidth: Math.min(root.focusedWidgetWidth, root.liveLayout.otherContentWidth)
+    readonly property real focusedWidgetViewportWidth: Math.min(root.focusedWidgetWidth, root.liveLayout.otherContentWidth)
 
     readonly property real baseWidth: Math.min(root.maximumWidth, Math.max(root.idleWidth, root.baseNaturalWidth + root.contentPadding * 2))
     readonly property real normalWidth: root.splitPlan.success && (root.notificationReady || root.splitProgress > 0.001) ? root.splitPlan.islandWidth : root.baseWidth
@@ -249,6 +249,8 @@ Item {
             primaryWidgetLoader.item.widgetState = root.widgetStateFor(root.primaryWidgetId)
             if (typeof primaryWidgetLoader.item.hostInset !== "undefined")
                 primaryWidgetLoader.item.hostInset = root.shapeInset
+            if (typeof primaryWidgetLoader.item.hostHeight !== "undefined")
+                primaryWidgetLoader.item.hostHeight = root.requestedHeight
         }
 
         if (splitCompanionLoader.item) {
@@ -315,11 +317,8 @@ Item {
         when: primaryWidgetLoader.item !== null
     }
 
-    Loader {
-        id: primaryWidgetLoader
-
-        source: root.primaryWidgetSource
-        asynchronous: false
+    Item {
+        id: primaryWidgetViewport
 
         opacity: root.focusedWidgetActive ? root.focusedPresentationPresence : (root.primaryWidgetVisible ? 1.0 : 0.0)
         scale: root.focusedWidgetActive ? 0.94 + root.focusedPresentationPresence * 0.06 : 1.0
@@ -328,14 +327,27 @@ Item {
         x: root.focusedWidgetActive
             ? root.liveLayout.otherContentStartOffset + Math.max((root.liveLayout.otherContentWidth - width) / 2, 0)
             : root.baseStartOffset + root.clockPreferredWidth + (root.primaryWidgetVisible ? root.baseSpacing : 0)
-        width: root.focusedWidgetActive ? root.focusedWidgetLayoutWidth : (root.primaryWidgetVisible ? root.primaryPreferredWidth : 0)
+        width: root.focusedWidgetActive ? root.focusedWidgetViewportWidth : (root.primaryWidgetVisible ? root.primaryPreferredWidth : 0)
         height: root.height
+        clip: true
 
-        onLoaded: {
-            root.syncWidgetInputs()
+        Loader {
+            id: primaryWidgetLoader
 
-            if (root.focusedWidgetActive && !Boolean(item?.widgetVisible ?? false))
-                Qt.callLater(root.leaveFocusedWidgetPeek)
+            source: root.primaryWidgetSource
+            asynchronous: false
+
+            x: root.focusedWidgetActive ? (parent.width - width) / 2 : 0
+            y: 0
+            width: root.focusedWidgetActive ? root.focusedWidgetWidth : parent.width
+            height: parent.height
+
+            onLoaded: {
+                root.syncWidgetInputs()
+
+                if (root.focusedWidgetActive && !Boolean(item?.widgetVisible ?? false))
+                    Qt.callLater(root.leaveFocusedWidgetPeek)
+            }
         }
     }
 

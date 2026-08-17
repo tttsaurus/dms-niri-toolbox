@@ -38,7 +38,7 @@ Item {
         root.maximumHeight
     )
     readonly property real targetWidth: root.requestedWidth
-    readonly property real targetHeight: root.controller.mode === "expanded" ? root.requestedHeight : root.compactHeight
+    readonly property real targetHeight: root.requestedHeight
 
     readonly property bool contentWantsSplit: root.loadedContent?.wantsSplit === true
     readonly property real contentSplitPercentage: {
@@ -132,6 +132,12 @@ Item {
         root.syncContentItem(sceneLoaderB.item)
     }
 
+    function applyControllerScene() {
+        const mode = root.controller.mode
+        root.switchScene(registry.sceneSourceFor(mode))
+        root.syncContentInputs()
+    }
+
     function inactiveContentLoader() {
         return root.activeContentLoader === sceneLoaderA ? sceneLoaderB : sceneLoaderA
     }
@@ -186,13 +192,8 @@ Item {
             root.syncContentInputs()
         }
 
-        function onSceneContextChanged() {
-            root.syncContentInputs()
-        }
-
-        function onModeChanged() {
-            root.switchScene(registry.sceneSourceFor(root.controller.mode))
-            root.syncContentInputs()
+        function onSceneStateChanged() {
+            root.applyControllerScene()
         }
 
         function onWidgetStatesChanged() {
@@ -300,7 +301,7 @@ Item {
         }
     }
 
-    Component.onCompleted: root.switchScene(registry.sceneSourceFor(root.controller.mode))
+    Component.onCompleted: root.applyControllerScene()
 
     Connections {
         target: root.loadedContent

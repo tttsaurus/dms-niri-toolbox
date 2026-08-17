@@ -7,16 +7,21 @@ Item {
     width: 0
     height: 0
 
-    readonly property string mode: _mode
-    readonly property var sceneContext: _sceneContext
+    readonly property var sceneState: _scene
+    readonly property string mode: String(root._scene?.presentation ?? "compact")
+    readonly property var sceneContext: root._scene?.context ?? ({})
     readonly property var currentNotification: _currentNotification
     readonly property int queuedNotificationCount: _notificationQueue.length
     readonly property bool notificationsSuspended: _notificationsSuspended
     readonly property var widgetStates: _widgetStates
     readonly property int sceneHistoryDepth: _sceneHistory.length
 
-    property string _mode: "compact"
-    property var _sceneContext: ({})
+    // Presentation and context are committed together so consumers never
+    // observe a mode from one scene with the context from another.
+    property var _scene: ({
+        presentation: "compact",
+        context: ({})
+    })
     property var _sceneHistory: []
     property bool _sceneLeaseReturnsBack: false
 
@@ -131,11 +136,11 @@ Item {
     }
 
     function exclusivePeekActive() {
-        return root.isExclusivePresentation(root._mode, root._sceneContext)
+        return root.isExclusivePresentation(root.mode, root.sceneContext)
     }
 
     function notificationPresentationAvailable() {
-        return root._mode === "compact" || (root._mode === "peek" && !root.exclusivePeekActive())
+        return root.mode === "compact" || (root.mode === "peek" && !root.exclusivePeekActive())
     }
 
     function playNextNotification() {
@@ -230,8 +235,8 @@ Item {
 
     function currentSceneFrame() {
         return {
-            presentation: root._mode,
-            context: Object.assign({}, root._sceneContext),
+            presentation: root.mode,
+            context: Object.assign({}, root.sceneContext),
             notificationsSuspended: root._notificationsSuspended
         }
     }
@@ -244,7 +249,7 @@ Item {
     }
 
     function applySceneRequest(request, leaseReturnsBack) {
-        const presentation = root.normalizedPresentation(request.presentation, root._mode)
+        const presentation = root.normalizedPresentation(request.presentation, root.mode)
         const sceneContext = Object.assign({}, request.context ?? ({}))
 
         sceneTimer.stop()
@@ -255,8 +260,10 @@ Item {
         if (policy === "suspend")
             root.suspendNotifications()
 
-        root._mode = presentation
-        root._sceneContext = sceneContext
+        root._scene = {
+            presentation: presentation,
+            context: sceneContext
+        }
 
         if (policy === "resume")
             root.resumeNotifications()
@@ -403,7 +410,9 @@ Item {
         root._sceneLeaseReturnsBack = false
         root._sceneHistory = []
         root.clearNotifications()
-        root._sceneContext = ({})
-        root._mode = "compact"
+        root._scene = {
+            presentation: "compact",
+            context: ({})
+        }
     }
 }
