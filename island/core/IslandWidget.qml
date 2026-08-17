@@ -3,7 +3,6 @@ import QtQuick
 Item {
     id: root
 
-    property string presentation: "compact"
     property var widgetState: ({})
 
     property bool contentAvailable: true

@@ -14,12 +14,17 @@ Core.IslandWidget {
     // visual host metric supplied by the composing scene
     property real hostInset: 5
     property real hostHeight: 0
+    property var viewOptions: ({})
 
     readonly property MprisPlayer player: MprisController.activePlayer
     
     contentAvailable: root.player !== null && root.player.playbackState !== MprisPlaybackState.Stopped
 
-    readonly property bool detailed: root.presentation === "peek" || root.presentation === "expanded"
+    readonly property bool detailed: root.viewOptions?.showMetadata === true
+    readonly property real metadataWidthLimit: {
+        const limit = Number(root.viewOptions?.metadataWidthLimit ?? 0)
+        return Number.isFinite(limit) && limit > 0 ? limit : 0
+    }
     readonly property bool playing: root.widgetVisible && !!root.player?.isPlaying
     readonly property bool canTogglePlaying: root.widgetVisible && !!root.player?.canTogglePlaying
     readonly property string trackTitle: {
@@ -70,7 +75,9 @@ Core.IslandWidget {
     readonly property real metadataSeparatorWidth: root.trackArtist.length > 0 ? metadataSeparatorMetrics.advanceWidth + root.metadataInlineSpacing * 2 : 0
     readonly property real metadataTextNaturalWidth: root.metadataTitleNaturalWidth + root.metadataArtistNaturalWidth
     readonly property real metadataNaturalWidth: root.metadataTextNaturalWidth + root.metadataSeparatorWidth
-    readonly property real metadataPreferredWidth: root.presentation === "peek" ? Math.min(300, root.metadataNaturalWidth) : root.metadataNaturalWidth
+    readonly property real metadataPreferredWidth: root.metadataWidthLimit > 0
+        ? Math.min(root.metadataWidthLimit, root.metadataNaturalWidth)
+        : root.metadataNaturalWidth
     readonly property real metadataMinimumWidth: Math.min(root.metadataPreferredWidth, 92)
     readonly property real detailedFixedWidth: root.leftPadding + root.artworkSize + root.controlSpacing + root.waveWidth + root.metadataSpacing + root.metadataActionSpacing + root.playButtonVisualSize + root.rightPadding
     readonly property real metadataLayoutWidth: root.detailed ? Math.min(root.metadataPreferredWidth, Math.max(root.width - root.detailedFixedWidth, 0)) : 0

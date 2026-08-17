@@ -84,10 +84,18 @@ Item {
                     hostHeight: root.hostHeight
                     animateVisibility: root.animateVisibility
 
-                    onActivated: root.activated(widgetSlot.widgetId)
-                    onStatePatchRequested: patch => root.statePatchRequested(widgetSlot.widgetId, patch)
-                    onActionRequested: (action, payload) => root.actionRequested(widgetSlot.widgetId, action, payload)
-                    onAccessRequested: request => root.accessRequested(request)
+                    onActivated: function() {
+                        root.activated(widgetSlot.widgetId)
+                    }
+                    onStatePatchRequested: function(patch) {
+                        root.statePatchRequested(widgetSlot.widgetId, patch)
+                    }
+                    onActionRequested: function(action, payload) {
+                        root.actionRequested(widgetSlot.widgetId, action, payload)
+                    }
+                    onAccessRequested: function(request) {
+                        root.accessRequested(Object.assign({}, request))
+                    }
                 }
             }
         }

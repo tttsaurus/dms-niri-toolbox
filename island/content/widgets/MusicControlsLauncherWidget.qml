@@ -8,7 +8,6 @@ import "../../core" as Core
 Core.IslandWidget {
     id: root
 
-    presentation: "peek"
     contentAvailable: true
     minimumWidthHint: 16
     preferredWidthHint: root.minimumWidthHint

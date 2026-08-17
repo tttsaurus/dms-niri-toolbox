@@ -215,9 +215,16 @@ Core.IslandWidget {
 Common inputs:
 
 ```qml
-property string presentation
 property var widgetState
 ```
+
+Island presentation is not Widget state. Compact/Peek/Expanded belongs to the access frame and its Host. A Widget with presentation-specific visuals may declare an optional, Widget-local input such as:
+
+```qml
+property var viewOptions: ({})
+```
+
+The registry maps the Host presentation to domain-specific options. Music Track receives `showMetadata` and `metadataWidthLimit`; it never receives or branches on the island presentation enum.
 
 Common availability and layout fields:
 
@@ -251,11 +258,15 @@ function patchState(patch)
 function requestAccess(request)
 ```
 
-Use `activated()` for the registry-defined default edge. Use `requestAccess()` only when a Widget must choose a dynamic target; the Controller still validates the target and Compact prohibition.
+Use `activated()` for the registry-defined default edge. The Host resolves that edge using its own presentation and forwards the copied access request. Use `requestAccess()` only when a Widget must choose a dynamic target; the Controller still validates the target and Compact prohibition.
 
 ## Generic Widget hosting and Idle composition
 
-`IslandWidgetHost` is the single protocol adapter. It resolves a registered source, injects presentation/state/optional host metrics, forwards semantic signals, and exposes normalized hints.
+`IslandWidgetHost` is the single protocol adapter. It owns the presentation, resolves a registered source and default activation edge, injects state/optional Widget-local view options/host metrics, forwards semantic signals, and exposes normalized hints.
+
+`widgetReady` means exactly that the Loader has the selected source in `Loader.Ready`; it is never gated by a second owner/preparation latch. Inputs are synchronously injected from `onLoaded`. Peek and Expanded defer an unavailable decision by one event turn, then revalidate the current `accessId`, renderer epoch, load failure, and `widgetVisible` before popping. Peek's background back action remains enabled for the entire access lifetime, so a missing or failed Widget cannot trap the access chain in a blank renderer.
+
+A presentation viewport must not derive its own `visible` value from the hosted child's `visible` value. Qt propagates an invisible parent's state into every child, so that dependency forms a closed visibility loop. The viewport is driven by its own transition opacity; `IslandWidgetHost` independently owns the Widget's presence animation.
 
 For visibility, it keeps one `visibilityProgress` scalar:
 
@@ -291,7 +302,9 @@ Adding/removing a root item is a list change, not a new hand-written Loader, wid
 - default activation edge per presentation;
 - optional presentation metadata such as Expanded title and unavailable behavior.
 
-`activationRequestFor(widgetId, presentation)` returns a copied edge request. The Content renderer forwards it to access navigation. A newly registered Widget can therefore choose Compact → Peek, Compact → Expanded, Peek → another Peek/Expanded Widget, or Expanded → another Peek/Expanded Widget without adding feature-specific branches to Idle, Peek, Expanded, Presenter, or Controller.
+`activationRequestFor(widgetId, presentation)` returns a copied edge request. `IslandWidgetHost` resolves and forwards it when the Widget emits `activated()`. A newly registered Widget can therefore choose Compact → Peek, Compact → Expanded, Peek → another Peek/Expanded Widget, or Expanded → another Peek/Expanded Widget without adding feature-specific branches to Idle, Peek, Expanded, Presenter, or Controller.
+
+`viewOptionsFor(widgetId, presentation)` separately returns a copy of optional Widget-local rendering inputs. Access navigation never reads them, and the Widget never needs to know the Host presentation.
 
 Back is also an edge:
 

@@ -24,11 +24,15 @@ Item {
     readonly property string widgetId: String(root.sceneContext?.widgetId ?? root.sceneContext?.exclusiveWidgetId ?? "")
     readonly property var presentationSpec: registry.presentationSpecFor(root.widgetId, "expanded")
     readonly property bool hasWidget: expandedWidgetHost.widgetReady && expandedWidgetHost.widgetVisible
+    readonly property bool widgetUnavailable:
+        expandedWidgetHost.widgetLoadFailed
+        || (expandedWidgetHost.widgetReady && !expandedWidgetHost.widgetVisible)
     readonly property bool backOnWidgetActivation: root.sceneContext?.backOnWidgetActivation === true
     readonly property bool backWhenWidgetUnavailable: root.sceneContext?.backWhenWidgetUnavailable === true || root.presentationSpec.backWhenUnavailable === true
     readonly property string title: String(root.sceneContext?.title ?? root.presentationSpec.title ?? "Dynamic Island")
 
     property bool _backPending: false
+    property int _availabilityEpoch: 0
 
     function hintedDimension(value, fallback) {
         const number = Number(value)
@@ -55,31 +59,46 @@ Item {
         id: registry
     }
 
-    function requestBack() {
+    function currentAccessId() {
+        const accessId = Number(root.sceneContext?.accessId ?? 0)
+        return Number.isFinite(accessId) ? accessId : 0
+    }
+
+    function requestBack(expectedAccessId, expectedEpoch) {
         if (root._backPending)
+            return
+
+        const accessId = Number(expectedAccessId)
+        if (Number.isFinite(accessId) && accessId > 0 && root.currentAccessId() !== accessId)
+            return
+
+        const epoch = Number(expectedEpoch)
+        if (Number.isFinite(epoch) && root._availabilityEpoch !== epoch)
             return
 
         root._backPending = true
         root.accessRequested({ navigation: "back" })
     }
 
-    function activateWidget() {
-        const request = registry.activationRequestFor(root.widgetId, "expanded")
-        if (request) {
-            root.accessRequested(request)
-            return
-        }
-
+    function handleUnhandledWidgetActivation() {
         if (root.backOnWidgetActivation)
             root.requestBack()
     }
 
-    function reconcileWidgetAvailability() {
-        if (!root.backWhenWidgetUnavailable
-                || !expandedWidgetHost.widgetReady
-                || expandedWidgetHost.widgetVisible) return
+    function scheduleUnavailableBack() {
+        if (!root.backWhenWidgetUnavailable || !root.widgetUnavailable)
+            return
 
-        Qt.callLater(root.requestBack)
+        const accessId = root.currentAccessId()
+        const epoch = root._availabilityEpoch
+        Qt.callLater(function() {
+            if (root._availabilityEpoch !== epoch
+                    || root.currentAccessId() !== accessId
+                    || !root.backWhenWidgetUnavailable
+                    || !root.widgetUnavailable) return
+
+            root.requestBack(accessId, epoch)
+        })
     }
 
     Item {
@@ -156,11 +175,13 @@ Item {
             widgetState: root.widgetStateFor(root.widgetId)
             scaleWithVisibility: false
 
-            onActivated: root.activateWidget()
-            onStatePatchRequested: patch => root.widgetStatePatchRequested(root.widgetId, patch)
-            onAccessRequested: request => root.accessRequested(Object.assign({}, request))
-            onWidgetReadyChanged: root.reconcileWidgetAvailability()
-            onWidgetVisibleChanged: root.reconcileWidgetAvailability()
+            onActivated: root.handleUnhandledWidgetActivation()
+            onStatePatchRequested: function(patch) {
+                root.widgetStatePatchRequested(root.widgetId, patch)
+            }
+            onAccessRequested: function(request) {
+                root.accessRequested(Object.assign({}, request))
+            }
         }
 
         StyledText {
@@ -180,9 +201,11 @@ Item {
     }
 
     onSceneContextChanged: {
+        root._availabilityEpoch++
         root._backPending = false
-        Qt.callLater(root.reconcileWidgetAvailability)
+        root.scheduleUnavailableBack()
     }
 
-    Component.onCompleted: Qt.callLater(root.reconcileWidgetAvailability)
+    onWidgetUnavailableChanged: root.scheduleUnavailableBack()
+    Component.onCompleted: root.scheduleUnavailableBack()
 }

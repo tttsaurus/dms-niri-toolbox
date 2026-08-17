@@ -126,12 +126,6 @@ Item {
         root._displaySplitPlan = null
     }
 
-    function activateWidget(widgetId) {
-        const request = registry.activationRequestFor(widgetId, "compact")
-        if (request)
-            root.accessRequested(request)
-    }
-
     Item {
         id: basePiece
 
@@ -159,9 +153,12 @@ Item {
             hostInset: root.shapeInset
             hostHeight: root.requestedHeight
 
-            onActivated: widgetId => root.activateWidget(widgetId)
-            onStatePatchRequested: (widgetId, patch) => root.widgetStatePatchRequested(widgetId, patch)
-            onAccessRequested: request => root.accessRequested(Object.assign({}, request))
+            onStatePatchRequested: function(widgetId, patch) {
+                root.widgetStatePatchRequested(widgetId, patch)
+            }
+            onAccessRequested: function(request) {
+                root.accessRequested(Object.assign({}, request))
+            }
         }
     }
 

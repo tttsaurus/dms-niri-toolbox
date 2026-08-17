@@ -20,6 +20,7 @@ Item {
     signal accessRequested(var request)
 
     readonly property url widgetSource: root.registry.widgetSourceFor(root.widgetId)
+    readonly property var viewOptions: root.registry.viewOptionsFor(root.widgetId, root.presentation)
     readonly property bool sourceMatches:
         String(root.widgetSource).length > 0
         && String(widgetLoader.source) === String(root.widgetSource)
@@ -27,6 +28,9 @@ Item {
         root.sourceMatches
         && widgetLoader.status === Loader.Ready
         && widgetLoader.item !== null
+    readonly property bool widgetLoadFailed:
+        root.sourceMatches
+        && widgetLoader.status === Loader.Error
     readonly property bool widgetVisible:
         root.widgetReady
         && Boolean(widgetLoader.item?.widgetVisible ?? false)
@@ -91,10 +95,20 @@ Item {
         if (!widgetLoader.item || !root.sourceMatches)
             return
 
-        root.setOptionalWidgetProperty("presentation", root.presentation)
+        root.setOptionalWidgetProperty("viewOptions", root.viewOptions)
         root.setOptionalWidgetProperty("widgetState", root.widgetState ?? ({}))
         root.setOptionalWidgetProperty("hostInset", root.hostInset)
         root.setOptionalWidgetProperty("hostHeight", root.hostHeight)
+    }
+
+    function routeDefaultActivation() {
+        const request = root.registry.activationRequestFor(root.widgetId, root.presentation)
+        if (request) {
+            root.accessRequested(request)
+            return
+        }
+
+        root.activated()
     }
 
     function reconcileVisibility() {
@@ -133,7 +147,7 @@ Item {
         }
     }
 
-    onPresentationChanged: root.syncWidgetInputs()
+    onViewOptionsChanged: root.syncWidgetInputs()
     onWidgetStateChanged: {
         root.syncWidgetInputs()
         Qt.callLater(root.reconcileVisibility)
@@ -152,7 +166,7 @@ Item {
         ignoreUnknownSignals: true
 
         function onActivated() {
-            root.activated()
+            root.routeDefaultActivation()
         }
 
         function onStatePatchRequested(patch) {

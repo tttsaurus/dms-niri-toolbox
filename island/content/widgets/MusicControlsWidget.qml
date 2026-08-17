@@ -10,7 +10,6 @@ import "../../core" as Core
 Core.IslandWidget {
     id: root
 
-    presentation: "expanded"
     property bool isSeeking: false
 
     readonly property MprisPlayer player: MprisController.activePlayer

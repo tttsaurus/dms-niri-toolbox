@@ -38,6 +38,11 @@ Item {
 
     readonly property bool primaryWidgetReady: root.widgetAccessActive && root._displayPrimaryWidgetId === root.primaryWidgetId && primaryWidgetHost.widgetReady
     readonly property bool primaryWidgetVisible: root.primaryWidgetReady && primaryWidgetHost.widgetVisible
+    readonly property bool primaryWidgetUnavailable:
+        root.widgetAccessActive
+        && root._displayPrimaryWidgetId === root.primaryWidgetId
+        && (primaryWidgetHost.widgetLoadFailed
+            || (primaryWidgetHost.widgetReady && !primaryWidgetHost.widgetVisible))
 
     readonly property var splitCompanionSpec: root.widgetAccessActive 
         ? (root.sceneContext?.splitCompanion ?? registry.companionFor(root.primaryWidgetId, "peek"))
@@ -58,6 +63,7 @@ Item {
 
     property real accessPresentationProgress: root.widgetAccessActive && root.primaryWidgetVisible ? 1.0 : 0.0
     property bool _focusedBackPending: false
+    property int _availabilityEpoch: 0
     property string _displayPrimaryWidgetId: ""
 
     Behavior on accessPresentationProgress {
@@ -190,18 +196,40 @@ Item {
         return id.length > 0 && root.widgetStates ? (root.widgetStates[id] ?? ({})) : ({})
     }
 
-    function activateWidget(widgetId, presentation) {
-        const request = registry.activationRequestFor(widgetId, presentation)
-        if (request)
-            root.accessRequested(request)
+    function currentAccessId() {
+        const accessId = Number(root.sceneContext?.accessId ?? 0)
+        return Number.isFinite(accessId) ? accessId : 0
     }
 
-    function leaveWidgetAccess() {
+    function leaveWidgetAccess(expectedAccessId, expectedEpoch) {
         if (!root.widgetAccessActive || root._focusedBackPending)
+            return
+
+        const accessId = Number(expectedAccessId)
+        if (Number.isFinite(accessId) && accessId > 0 && root.currentAccessId() !== accessId)
+            return
+
+        const epoch = Number(expectedEpoch)
+        if (Number.isFinite(epoch) && root._availabilityEpoch !== epoch)
             return
 
         root._focusedBackPending = true
         root.accessRequested({ navigation: "back" })
+    }
+
+    function scheduleUnavailableBack() {
+        if (!root.primaryWidgetUnavailable)
+            return
+
+        const accessId = root.currentAccessId()
+        const epoch = root._availabilityEpoch
+        Qt.callLater(function() {
+            if (root._availabilityEpoch !== epoch
+                    || root.currentAccessId() !== accessId
+                    || !root.primaryWidgetUnavailable) return
+
+            root.leaveWidgetAccess(accessId, epoch)
+        })
     }
 
     function reconcileDisplayedPrimaryWidget() {
@@ -285,9 +313,12 @@ Item {
         hostInset: root.shapeInset
         hostHeight: root.requestedHeight
 
-        onActivated: widgetId => root.activateWidget(widgetId, "compact")
-        onStatePatchRequested: (widgetId, patch) => root.widgetStatePatchRequested(widgetId, patch)
-        onAccessRequested: request => root.accessRequested(Object.assign({}, request))
+        onStatePatchRequested: function(widgetId, patch) {
+            root.widgetStatePatchRequested(widgetId, patch)
+        }
+        onAccessRequested: function(request) {
+            root.accessRequested(Object.assign({}, request))
+        }
     }
 
     Loader {
@@ -313,8 +344,8 @@ Item {
     MouseArea {
         anchors.fill: parent
         z: 0
-        visible: root.widgetAccessActive && root.primaryWidgetVisible
-        enabled: visible && root.accessPresentationProgress > 0.9
+        visible: root.widgetAccessActive
+        enabled: visible
         cursorShape: Qt.PointingHandCursor
 
         onClicked: root.leaveWidgetAccess()
@@ -323,7 +354,7 @@ Item {
     Item {
         id: primaryWidgetViewport
 
-        visible: opacity > 0.001 && primaryWidgetHost.visible
+        visible: opacity > 0.001
         opacity: root.accessPresentationProgress
         scale: 0.94 + root.accessPresentationProgress * 0.06
         enabled: root.primaryWidgetVisible
@@ -349,16 +380,11 @@ Item {
             hostHeight: root.requestedHeight
             scaleWithVisibility: false
 
-            onActivated: root.activateWidget(root.primaryWidgetId, "peek")
-            onStatePatchRequested: patch => root.widgetStatePatchRequested(root.primaryWidgetId, patch)
-            onAccessRequested: request => root.accessRequested(Object.assign({}, request))
-            onWidgetReadyChanged: {
-                if (root.widgetAccessActive && widgetReady && !widgetVisible)
-                    Qt.callLater(root.leaveWidgetAccess)
+            onStatePatchRequested: function(patch) {
+                root.widgetStatePatchRequested(root.primaryWidgetId, patch)
             }
-            onWidgetVisibleChanged: {
-                if (root.widgetAccessActive && widgetReady && !widgetVisible)
-                    Qt.callLater(root.leaveWidgetAccess)
+            onAccessRequested: function(request) {
+                root.accessRequested(Object.assign({}, request))
             }
         }
     }
@@ -366,7 +392,7 @@ Item {
     Item {
         id: splitCompanionViewport
 
-        visible: opacity > 0.001 && splitCompanionHost.visible
+        visible: opacity > 0.001
         opacity: root.accessPresentationProgress * root.splitProgress
         scale: 0.86 + root.splitProgress * 0.14
         enabled: root.splitCompanionReady && root.splitProgress > 0.9
@@ -390,9 +416,12 @@ Item {
             hostHeight: root.requestedHeight
             scaleWithVisibility: false
 
-            onActivated: root.activateWidget(root.splitCompanionWidgetId, "peek")
-            onStatePatchRequested: patch => root.widgetStatePatchRequested(root.splitCompanionWidgetId, patch)
-            onAccessRequested: request => root.accessRequested(Object.assign({}, request))
+            onStatePatchRequested: function(patch) {
+                root.widgetStatePatchRequested(root.splitCompanionWidgetId, patch)
+            }
+            onAccessRequested: function(request) {
+                root.accessRequested(Object.assign({}, request))
+            }
         }
     }
 
@@ -439,24 +468,23 @@ Item {
         root._focusedBackPending = false
         root.reconcileDisplayedPrimaryWidget()
         root.reconcileFocusedSplitPlan()
-        if (root.widgetAccessActive && root.primaryWidgetReady && !root.primaryWidgetVisible)
-            Qt.callLater(root.leaveWidgetAccess)
+        root.scheduleUnavailableBack()
     }
 
     onSceneContextChanged: {
+        root._availabilityEpoch++
         root._focusedBackPending = false
         root.reconcileDisplayedPrimaryWidget()
         root.reconcileFocusedSplitPlan()
-        if (root.widgetAccessActive && root.primaryWidgetReady && !root.primaryWidgetVisible)
-            Qt.callLater(root.leaveWidgetAccess)
+        root.scheduleUnavailableBack()
     }
 
     Component.onCompleted: {
         root.reconcileDisplayedPrimaryWidget()
         root.reconcileFocusedSplitPlan()
-        if (root.widgetAccessActive && root.primaryWidgetReady && !root.primaryWidgetVisible)
-            Qt.callLater(root.leaveWidgetAccess)
+        root.scheduleUnavailableBack()
     }
 
+    onPrimaryWidgetUnavailableChanged: root.scheduleUnavailableBack()
     onAccessPresentationProgressChanged: root.reconcileDisplayedPrimaryWidget()
 }

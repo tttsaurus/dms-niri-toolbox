@@ -49,7 +49,24 @@ QtObject {
                             navigation: "back"
                         }
                     },
-                    presentations: ({}),
+                    presentations: {
+                        compact: {
+                            viewOptions: {
+                                showMetadata: false
+                            }
+                        },
+                        peek: {
+                            viewOptions: {
+                                showMetadata: true,
+                                metadataWidthLimit: 300
+                            }
+                        },
+                        expanded: {
+                            viewOptions: {
+                                showMetadata: true
+                            }
+                        }
+                    },
                     companions: {
                         peek: {
                             widgetId: "musicControlsLauncher",
@@ -127,6 +144,11 @@ QtObject {
             return ({})
 
         return Object.assign({}, definition.presentations[String(presentation ?? "")] ?? ({}))
+    }
+
+    function viewOptionsFor(widgetId, presentation) {
+        const options = root.presentationSpecFor(widgetId, presentation).viewOptions
+        return options && typeof options === "object" ? Object.assign({}, options) : ({})
     }
 
     function companionFor(widgetId, presentation) {
