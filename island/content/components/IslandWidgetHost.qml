@@ -80,7 +80,7 @@ Item {
             if (typeof item[name] !== "undefined")
                 item[name] = value
         } catch (error) {
-            console.warn(
+            console.debug(
                 "[IslandWidgetHost] failed to inject ",
                 name,
                 " into ",
