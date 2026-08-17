@@ -3,8 +3,8 @@ import QtQuick
 QtObject {
     id: root
 
-    function sceneSourceFor(mode) {
-        switch (String(mode)) {
+    function sceneSourceFor(presentation) {
+        switch (String(presentation)) {
             case "compact":
                 return Qt.resolvedUrl("../content/IdleContent.qml")
             case "peek":
@@ -25,42 +25,116 @@ QtObject {
         }
     }
 
-    function widgetSourceFor(widgetId) {
+    function widgetDefinitionFor(widgetId) {
         switch (String(widgetId ?? "")) {
             case "clock":
-                return Qt.resolvedUrl("../content/widgets/ClockWidget.qml")
-            case "musicTrack":
-                return Qt.resolvedUrl("../content/widgets/MusicTrackWidget.qml")
-            case "musicControlsLauncher":
-                return Qt.resolvedUrl("../content/widgets/MusicControlsLauncherWidget.qml")
-            case "musicControls":
-                return Qt.resolvedUrl("../content/widgets/MusicControlsWidget.qml")
-            default:
-                return ""
-        }
-    }
-
-    function peekCompanionFor(widgetId) {
-        switch (String(widgetId ?? "")) {
+                return {
+                    widgetId: "clock",
+                    source: Qt.resolvedUrl("../content/widgets/ClockWidget.qml"),
+                    activations: ({}),
+                    presentations: ({}),
+                    companions: ({})
+                }
             case "musicTrack":
                 return {
-                    widgetId: "musicControlsLauncher",
-                    side: "right",
-                    square: true,
-                    activationRequest: {
-                        navigation: "push",
-                        presentation: "expanded",
-                        context: {
-                            widgetId: "musicControls",
-                            title: "Music",
-                            backOnWidgetActivation: true,
-                            backWhenWidgetUnavailable: true
+                    widgetId: "musicTrack",
+                    source: Qt.resolvedUrl("../content/widgets/MusicTrackWidget.qml"),
+                    activations: {
+                        compact: {
+                            navigation: "push",
+                            widgetId: "musicTrack",
+                            presentation: "peek"
                         },
-                        notificationPolicy: "keep"
+                        peek: {
+                            navigation: "back"
+                        }
+                    },
+                    presentations: ({}),
+                    companions: {
+                        peek: {
+                            widgetId: "musicControlsLauncher",
+                            side: "right",
+                            square: true
+                        }
                     }
+                }
+            case "musicControlsLauncher":
+                return {
+                    widgetId: "musicControlsLauncher",
+                    source: Qt.resolvedUrl("../content/widgets/MusicControlsLauncherWidget.qml"),
+                    activations: {
+                        peek: {
+                            navigation: "push",
+                            widgetId: "musicControls",
+                            presentation: "expanded"
+                        }
+                    },
+                    presentations: ({}),
+                    companions: ({})
+                }
+            case "musicControls":
+                return {
+                    widgetId: "musicControls",
+                    source: Qt.resolvedUrl("../content/widgets/MusicControlsWidget.qml"),
+                    activations: {
+                        expanded: {
+                            navigation: "back"
+                        }
+                    },
+                    presentations: {
+                        expanded: {
+                            title: "Music",
+                            backWhenUnavailable: true
+                        }
+                    },
+                    companions: ({})
                 }
             default:
                 return null
         }
+    }
+
+    function widgetSourceFor(widgetId) {
+        const definition = root.widgetDefinitionFor(widgetId)
+        return definition ? definition.source : ""
+    }
+
+    function isWidgetRegistered(widgetId) {
+        return String(root.widgetSourceFor(widgetId)).length > 0
+    }
+
+    function copiedRequest(request) {
+        if (!request)
+            return null
+
+        const copy = Object.assign({}, request)
+        if (request.context)
+            copy.context = Object.assign({}, request.context)
+        return copy
+    }
+
+    function activationRequestFor(widgetId, presentation) {
+        const definition = root.widgetDefinitionFor(widgetId)
+        if (!definition || !definition.activations)
+            return null
+
+        return root.copiedRequest(definition.activations[String(presentation ?? "")])
+    }
+
+    function presentationSpecFor(widgetId, presentation) {
+        const definition = root.widgetDefinitionFor(widgetId)
+        if (!definition || !definition.presentations)
+            return ({})
+
+        return Object.assign({}, definition.presentations[String(presentation ?? "")] ?? ({}))
+    }
+
+    function companionFor(widgetId, presentation) {
+        const definition = root.widgetDefinitionFor(widgetId)
+        if (!definition || !definition.companions)
+            return null
+
+        const companion = definition.companions[String(presentation ?? "")]
+        return companion ? Object.assign({}, companion) : null
     }
 }

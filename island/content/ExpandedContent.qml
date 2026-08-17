@@ -4,6 +4,7 @@ import qs.Common
 import qs.Widgets
 
 import "../core" as Core
+import "components" as Content
 
 Item {
     id: root
@@ -13,6 +14,7 @@ Item {
     property var widgetStates: ({})
     property var islandContext: null
 
+    signal accessRequested(var request)
     signal sceneRequested(var request)
     signal widgetStatePatchRequested(string widgetId, var patch)
     signal notificationDismissRequested()
@@ -20,14 +22,11 @@ Item {
     signal clearRequested()
 
     readonly property string widgetId: String(root.sceneContext?.widgetId ?? root.sceneContext?.exclusiveWidgetId ?? "")
-    readonly property url widgetSource: registry.widgetSourceFor(root.widgetId)
-    readonly property bool hasWidget:
-        String(root.widgetSource).length > 0
-        && String(widgetLoader.source) === String(root.widgetSource)
-        && widgetLoader.status === Loader.Ready
-        && Boolean(widgetLoader.item?.widgetVisible ?? false)
+    readonly property var presentationSpec: registry.presentationSpecFor(root.widgetId, "expanded")
+    readonly property bool hasWidget: expandedWidgetHost.widgetReady && expandedWidgetHost.widgetVisible
     readonly property bool backOnWidgetActivation: root.sceneContext?.backOnWidgetActivation === true
-    readonly property bool backWhenWidgetUnavailable: root.sceneContext?.backWhenWidgetUnavailable === true
+    readonly property bool backWhenWidgetUnavailable: root.sceneContext?.backWhenWidgetUnavailable === true || root.presentationSpec.backWhenUnavailable === true
+    readonly property string title: String(root.sceneContext?.title ?? root.presentationSpec.title ?? "Dynamic Island")
 
     property bool _backPending: false
 
@@ -36,32 +35,24 @@ Item {
         return Number.isFinite(number) && number > 0 ? number : fallback
     }
 
-    readonly property real widgetWidthHint: root.hintedDimension(widgetLoader.item?.preferredWidthHint, 360)
-    readonly property real widgetHeightHint: root.hintedDimension(widgetLoader.item?.preferredHeightHint, 36)
-
-    readonly property real requestedWidth: root.hintedDimension(root.sceneContext?.widthHint, root.hasWidget ? Math.max(420, root.widgetWidthHint + Theme.spacingL * 2) : 520)
-    readonly property real requestedHeight: root.hintedDimension(root.sceneContext?.heightHint, root.hasWidget ? Math.max(180, root.widgetHeightHint + Theme.spacingL * 4) : 260)
-
-    readonly property bool wantsSplit: false
-    readonly property bool animateContentChange: true
-    readonly property string contentAnimation: "subtle"
-    readonly property int animationRevision: 1
-
-    Core.IslandContentRegistry {
-        id: registry
-    }
-
     function widgetStateFor(widgetId) {
         const id = String(widgetId ?? "")
         return id.length > 0 && root.widgetStates ? (root.widgetStates[id] ?? ({})) : ({})
     }
 
-    function syncWidgetInputs() {
-        if (!widgetLoader.item)
-            return
+    readonly property real widgetWidthHint: root.hintedDimension(expandedWidgetHost.preferredWidthHint, 360)
+    readonly property real widgetHeightHint: root.hintedDimension(expandedWidgetHost.preferredHeightHint, 36)
 
-        widgetLoader.item.presentation = "expanded"
-        widgetLoader.item.widgetState = root.widgetStateFor(root.widgetId)
+    readonly property real requestedWidth: root.hintedDimension(root.sceneContext?.widthHint,root.hasWidget ? Math.max(420, root.widgetWidthHint + Theme.spacingL * 2) : 520)
+    readonly property real requestedHeight: root.hintedDimension(root.sceneContext?.heightHint, root.hasWidget ? Math.max(180, root.widgetHeightHint + Theme.spacingL * 4) : 260)
+
+    readonly property bool wantsSplit: false
+    readonly property bool animateContentChange: true
+    readonly property string contentAnimation: "subtle"
+    readonly property int animationRevision: Number(root.sceneContext?.accessId ?? 1)
+
+    Core.IslandContentRegistry {
+        id: registry
     }
 
     function requestBack() {
@@ -69,15 +60,24 @@ Item {
             return
 
         root._backPending = true
-        root.sceneRequested({ navigation: "back" })
+        root.accessRequested({ navigation: "back" })
+    }
+
+    function activateWidget() {
+        const request = registry.activationRequestFor(root.widgetId, "expanded")
+        if (request) {
+            root.accessRequested(request)
+            return
+        }
+
+        if (root.backOnWidgetActivation)
+            root.requestBack()
     }
 
     function reconcileWidgetAvailability() {
         if (!root.backWhenWidgetUnavailable
-                || widgetLoader.status !== Loader.Ready
-                || !widgetLoader.item
-                || String(widgetLoader.source) !== String(root.widgetSource)
-                || Boolean(widgetLoader.item.widgetVisible)) return
+                || !expandedWidgetHost.widgetReady
+                || expandedWidgetHost.widgetVisible) return
 
         Qt.callLater(root.requestBack)
     }
@@ -94,7 +94,7 @@ Item {
                 right: parent.right
                 top: parent.top
             }
-            
+
             height: 32
 
             StyledText {
@@ -103,7 +103,7 @@ Item {
                     verticalCenter: parent.verticalCenter
                 }
 
-                text: String(root.sceneContext?.title ?? "Dynamic Island")
+                text: root.title
                 font.pixelSize: Theme.fontSizeLarge
                 font.weight: Font.Bold
                 color: Theme.surfaceText
@@ -139,8 +139,8 @@ Item {
             }
         }
 
-        Loader {
-            id: widgetLoader
+        Content.IslandWidgetHost {
+            id: expandedWidgetHost
 
             anchors {
                 left: parent.left
@@ -150,14 +150,17 @@ Item {
                 topMargin: Theme.spacingL
             }
 
-            source: root.widgetSource
-            asynchronous: false
-            visible: root.hasWidget
+            registry: registry
+            widgetId: root.widgetId
+            presentation: "expanded"
+            widgetState: root.widgetStateFor(root.widgetId)
+            scaleWithVisibility: false
 
-            onLoaded: {
-                root.syncWidgetInputs()
-                root.reconcileWidgetAvailability()
-            }
+            onActivated: root.activateWidget()
+            onStatePatchRequested: patch => root.widgetStatePatchRequested(root.widgetId, patch)
+            onAccessRequested: request => root.accessRequested(Object.assign({}, request))
+            onWidgetReadyChanged: root.reconcileWidgetAvailability()
+            onWidgetVisibleChanged: root.reconcileWidgetAvailability()
         }
 
         StyledText {
@@ -169,35 +172,17 @@ Item {
             }
 
             visible: !root.hasWidget
-            text: String(root.sceneContext?.message ?? "Expanded scene")
+            text: String(root.sceneContext?.message ?? "Expanded Widget is unavailable")
             font.pixelSize: Theme.fontSizeMedium
             color: Theme.surfaceText
             wrapMode: Text.WordWrap
         }
     }
 
-    onWidgetStatesChanged: root.syncWidgetInputs()
     onSceneContextChanged: {
         root._backPending = false
-        root.syncWidgetInputs()
-        root.reconcileWidgetAvailability()
+        Qt.callLater(root.reconcileWidgetAvailability)
     }
 
-    Connections {
-        target: widgetLoader.item
-        ignoreUnknownSignals: true
-
-        function onActivated() {
-            if (root.backOnWidgetActivation)
-                root.requestBack()
-        }
-
-        function onWidgetVisibleChanged() {
-            root.reconcileWidgetAvailability()
-        }
-
-        function onStatePatchRequested(patch) {
-            root.widgetStatePatchRequested(root.widgetId, patch)
-        }
-    }
+    Component.onCompleted: Qt.callLater(root.reconcileWidgetAvailability)
 }

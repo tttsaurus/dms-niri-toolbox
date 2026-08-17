@@ -26,6 +26,7 @@ Item {
 
     function parseSceneRequest(event) {
         const context = root.objectCopy(event.context ?? event.payload)
+        const widgetId = String(event.widgetId ?? context.widgetId ?? context.exclusiveWidgetId ?? "").trim()
 
         const width = root.positiveFinite(event.width ?? event.widthHint ?? context.widthHint, 0)
         const height = root.positiveFinite(event.height ?? event.heightHint ?? context.heightHint, 0)
@@ -40,9 +41,38 @@ Item {
         return {
             navigation: String(event.navigation ?? "replace"),
             presentation: String(event.presentation ?? event.mode ?? "peek"),
+            widgetId: widgetId,
             context: context,
             notificationPolicy: String(event.notificationPolicy ?? ""),
             ttl: ttl > 0 ? Math.floor(ttl) : 0
+        }
+    }
+
+    function parseAccessRequest(event) {
+        const navigation = String(event.navigation ?? "push")
+        if (navigation === "back")
+            return { navigation: "back" }
+
+        const parsed = root.parseSceneRequest(event)
+        if (parsed.widgetId.length === 0) {
+            console.warn("[IslandEventBridge] access request requires widgetId")
+            return null
+        }
+
+        if (parsed.presentation === "compact") {
+            console.warn("[IslandEventBridge] Compact is the root Widget list, not an access target")
+            return null
+        }
+
+        if (event.notificationPolicy != null)
+            console.warn("[IslandEventBridge] Widget access always suppresses Notifications")
+
+        return {
+            navigation: navigation,
+            widgetId: parsed.widgetId,
+            presentation: parsed.presentation,
+            context: parsed.context,
+            ttl: parsed.ttl
         }
     }
 
@@ -108,6 +138,12 @@ Item {
         const requestType = String(event.request ?? "").trim()
 
         switch (requestType) {
+            case "access": {
+                const accessRequest = root.parseAccessRequest(event)
+                if (accessRequest)
+                    root.requestReceived("access", accessRequest)
+                return
+            }
             case "scene": {
                 root.requestReceived("scene", root.parseSceneRequest(event))
                 return

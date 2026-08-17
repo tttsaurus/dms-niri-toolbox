@@ -1,6 +1,7 @@
 import QtQuick
 
 import "../core" as Core
+import "components" as Content
 
 Item {
     id: root
@@ -10,6 +11,7 @@ Item {
     property var widgetStates: ({})
     property var islandContext: null
 
+    signal accessRequested(var request)
     signal sceneRequested(var request)
     signal widgetStatePatchRequested(string widgetId, var patch)
     signal notificationDismissRequested()
@@ -27,38 +29,43 @@ Item {
     readonly property real shapeInset: Math.max(Number(root.islandContext?.shapeInset ?? 5), 0)
 
     readonly property string presentationRole: String(root.sceneContext?.presentationRole ?? "")
-    readonly property string exclusiveWidgetId: String(root.sceneContext?.exclusiveWidgetId ?? "")
-    readonly property bool focusedWidgetActive: root.exclusiveWidgetId.length > 0
-    readonly property bool ownsNotificationSlot: !root.focusedWidgetActive
-    readonly property string primaryWidgetId: root.focusedWidgetActive ? root.exclusiveWidgetId : "musicTrack"
-    readonly property url primaryWidgetSource: registry.widgetSourceFor(root.primaryWidgetId)
-    readonly property bool primaryWidgetReady:
-        String(root.primaryWidgetSource).length > 0
-        && String(primaryWidgetLoader.source) === String(root.primaryWidgetSource)
-        && primaryWidgetLoader.status === Loader.Ready
-    readonly property bool primaryWidgetVisible: root.primaryWidgetReady && Boolean(primaryWidgetLoader.item?.widgetVisible ?? false)
+    readonly property string primaryWidgetId: String(root.sceneContext?.widgetId ?? root.sceneContext?.exclusiveWidgetId ?? "")
+    readonly property bool widgetAccessActive: String(root.sceneContext?.accessKind ?? "") === "widget" && root.primaryWidgetId.length > 0
+    readonly property bool ownsNotificationSlot: !root.widgetAccessActive
+    readonly property var overflowWidgets: !root.widgetAccessActive && Array.isArray(root.sceneContext?.widgets)
+        ? root.sceneContext.widgets
+        : []
 
-    readonly property var splitCompanionSpec: root.focusedWidgetActive
-        ? (root.sceneContext?.splitCompanion ?? registry.peekCompanionFor(root.exclusiveWidgetId))
+    readonly property bool primaryWidgetReady: root.widgetAccessActive && root._displayPrimaryWidgetId === root.primaryWidgetId && primaryWidgetHost.widgetReady
+    readonly property bool primaryWidgetVisible: root.primaryWidgetReady && primaryWidgetHost.widgetVisible
+
+    readonly property var splitCompanionSpec: root.widgetAccessActive 
+        ? (root.sceneContext?.splitCompanion ?? registry.companionFor(root.primaryWidgetId, "peek"))
         : null
     readonly property string splitCompanionWidgetId: String(root.splitCompanionSpec?.widgetId ?? "")
-    readonly property url splitCompanionSource: registry.widgetSourceFor(root.splitCompanionWidgetId)
     readonly property bool splitCompanionReady:
-        root.focusedWidgetActive
+        root.widgetAccessActive
         && root.splitCompanionWidgetId.length > 0
-        && String(root.splitCompanionSource).length > 0
-        && splitCompanionLoader.status === Loader.Ready
-        && Boolean(splitCompanionLoader.item?.widgetVisible ?? false)
+        && splitCompanionHost.widgetReady
+        && splitCompanionHost.widgetVisible
     readonly property string splitCompanionSide: String(root.splitCompanionSpec?.side ?? "right") === "left" ? "left" : "right"
     readonly property real splitCompanionPadding: root.shapeInset
-    readonly property real splitCompanionPreferredWidth: Math.max(Number(splitCompanionLoader.item?.preferredWidthHint ?? splitCompanionLoader.item?.implicitWidth ?? 16), 1)
+    readonly property real splitCompanionPreferredWidth: Math.max(Number(splitCompanionHost.preferredWidthHint), 1)
     readonly property real splitCompanionSquareContentWidth: Math.max(root.requestedHeight - root.shapeInset * 2 - root.splitCompanionPadding * 2, 1)
     readonly property real splitCompanionRequestedWidth: root.splitCompanionSpec?.square === true
         ? root.splitCompanionSquareContentWidth
         : root.splitCompanionPreferredWidth
 
-    property real focusedPresentationPresence: root.focusedWidgetActive && root.primaryWidgetVisible ? 1.0 : 0.0
+    property real accessPresentationProgress: root.widgetAccessActive && root.primaryWidgetVisible ? 1.0 : 0.0
     property bool _focusedBackPending: false
+    property string _displayPrimaryWidgetId: ""
+
+    Behavior on accessPresentationProgress {
+        NumberAnimation {
+            duration: 180
+            easing.type: Easing.OutCubic
+        }
+    }
 
     readonly property url notificationSource: root.ownsNotificationSlot
         ? registry.notificationSourceFor(root.notificationData)
@@ -70,10 +77,9 @@ Item {
         && String(root._displayNotificationSource) === String(root.notificationSource)
         && notificationLoader.status === Loader.Ready
 
-    readonly property real clockPreferredWidth: Math.max(Number(clockLoader.item?.preferredWidthHint ?? clockLoader.item?.implicitWidth ?? 52), 1)
-    readonly property real primaryPreferredWidth: Math.max(Number(primaryWidgetLoader.item?.preferredWidthHint ?? primaryWidgetLoader.item?.implicitWidth ?? 104), 1)
+    readonly property real primaryPreferredWidth: Math.max(Number(primaryWidgetHost.preferredWidthHint), 1)
     readonly property real focusedWidgetWidth: Math.min(root.primaryPreferredWidth, Math.max(root.maximumWidth - root.contentPadding * 2, 0))
-    readonly property real baseNaturalWidth: root.clockPreferredWidth + (root.primaryWidgetVisible ? root.baseSpacing + root.primaryPreferredWidth : 0)
+    readonly property real baseNaturalWidth: overflowWidgetStrip.naturalWidth
 
     readonly property real notificationPreferredWidth: Math.max(Number(notificationLoader.item?.preferredWidthHint ?? notificationLoader.item?.implicitWidth ?? 0), 0)
     readonly property string notificationSide: String(notificationLoader.item?.preferredSideHint ?? "right") === "left" ? "left" : "right"
@@ -108,7 +114,7 @@ Item {
         )
         : splitGeometry.failedPlan("no notification", root.idleWidth)
 
-    readonly property var focusedSplitPlan: root.splitCompanionReady
+    readonly property var focusedSplitCandidate: root.primaryWidgetReady && root.splitCompanionReady
         ? splitGeometry.findPlanForPiece(
             root.idleWidth,
             root.maximumWidth,
@@ -120,10 +126,14 @@ Item {
             root.splitCompanionPadding
         )
         : splitGeometry.failedPlan("no focused companion", root.idleWidth)
+    readonly property string focusedSplitOwner: String(root.sceneContext?.accessId ?? "") + "|" + root.primaryWidgetId + "|" + root.splitCompanionWidgetId
+    readonly property var focusedSplitPlan: root._displayFocusedSplitOwner === root.focusedSplitOwner && root._displayFocusedSplitPlan
+        ? root._displayFocusedSplitPlan
+        : splitGeometry.failedPlan("no retained focused split", root.idleWidth)
 
     readonly property var notificationSplitPlan: root._displaySplitPlan ?? splitGeometry.failedPlan("no display split", root.idleWidth)
-    readonly property var splitPlan: root.focusedWidgetActive ? root.focusedSplitPlan : root.notificationSplitPlan
-    readonly property bool wantsSplit: root.focusedWidgetActive
+    readonly property var splitPlan: root.widgetAccessActive ? root.focusedSplitPlan : root.notificationSplitPlan
+    readonly property bool wantsSplit: root.widgetAccessActive
         ? root.splitCompanionReady && root.splitPlan.success
         : root.notificationData !== null && root.splitPlan.success
     readonly property real splitPercentage: root.splitPlan.success ? root.splitPlan.percentage : 0.5
@@ -133,17 +143,19 @@ Item {
         root.shapeInset,
         root.liveSplitPercentage,
         root.splitProgress,
-        String(root.splitPlan?.side ?? (root.focusedWidgetActive ? root.splitCompanionSide : root.notificationSide)),
-        root.focusedWidgetActive ? root.splitCompanionPadding : root.piecePadding
+        String(root.splitPlan?.side ?? (root.widgetAccessActive ? root.splitCompanionSide : root.notificationSide)),
+        root.widgetAccessActive ? root.splitCompanionPadding : root.piecePadding
     )
     readonly property real focusedWidgetViewportWidth: Math.min(root.focusedWidgetWidth, root.liveLayout.otherContentWidth)
 
     readonly property real baseWidth: Math.min(root.maximumWidth, Math.max(root.idleWidth, root.baseNaturalWidth + root.contentPadding * 2))
-    readonly property real normalWidth: root.splitPlan.success && (root.notificationReady || root.splitProgress > 0.001) ? root.splitPlan.islandWidth : root.baseWidth
-    readonly property real baseStartOffset: root.wantsSplit || root.splitProgress > 0.001 
+    readonly property real normalWidth: root.splitPlan.success && (root.notificationReady || root.splitProgress > 0.001)
+        ? root.splitPlan.islandWidth
+        : root.baseWidth
+    readonly property real baseStartOffset: root.wantsSplit || root.splitProgress > 0.001
         ? root.liveLayout.otherContentStartOffset + Math.max((root.liveLayout.otherContentWidth - root.baseNaturalWidth) / 2, 0)
         : Math.max(root.contentPadding, (root.width - root.baseNaturalWidth) / 2)
-    readonly property real requestedWidth: root.focusedWidgetActive
+    readonly property real requestedWidth: root.widgetAccessActive
         ? (root.focusedSplitPlan.success
             ? root.focusedSplitPlan.islandWidth
             : Math.min(root.maximumWidth, Math.max(root.idleWidth, root.focusedWidgetWidth + root.contentPadding * 2)))
@@ -151,20 +163,19 @@ Item {
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
 
     readonly property bool animateContentChange: true
-    readonly property string contentAnimation: root.notificationReady ? String(notificationLoader.item?.animationHint ?? "subtle") : "subtle"
-    readonly property int animationRevision: _animationRevision
+    readonly property string contentAnimation: root.notificationReady
+        ? String(notificationLoader.item?.animationHint ?? "subtle")
+        : "subtle"
+    readonly property int animationRevision: root.widgetAccessActive
+        ? Number(root.sceneContext?.accessId ?? 0)
+        : root._animationRevision
 
     property int _animationRevision: 0
     property url _displayNotificationSource: ""
     property var _displayNotificationData: null
     property var _displaySplitPlan: null
-
-    Behavior on focusedPresentationPresence {
-        NumberAnimation {
-            duration: 180
-            easing.type: Easing.OutCubic
-        }
-    }
+    property string _displayFocusedSplitOwner: ""
+    property var _displayFocusedSplitPlan: null
 
     Core.IslandContentRegistry {
         id: registry
@@ -174,36 +185,42 @@ Item {
         id: splitGeometry
     }
 
-    function enterFocusedWidgetPeek(widgetId) {
+    function widgetStateFor(widgetId) {
         const id = String(widgetId ?? "")
-        if (id.length === 0)
-            return
-
-        root.sceneRequested({
-            navigation: "push",
-            presentation: "peek",
-            context: {
-                exclusiveWidgetId: id
-            },
-            notificationPolicy: "suspend"
-        })
+        return id.length > 0 && root.widgetStates ? (root.widgetStates[id] ?? ({})) : ({})
     }
 
-    function leaveFocusedWidgetPeek() {
-        if (!root.focusedWidgetActive || root._focusedBackPending)
+    function activateWidget(widgetId, presentation) {
+        const request = registry.activationRequestFor(widgetId, presentation)
+        if (request)
+            root.accessRequested(request)
+    }
+
+    function leaveWidgetAccess() {
+        if (!root.widgetAccessActive || root._focusedBackPending)
             return
 
         root._focusedBackPending = true
-        root.sceneRequested({ navigation: "back" })
+        root.accessRequested({ navigation: "back" })
+    }
+
+    function reconcileDisplayedPrimaryWidget() {
+        if (root.widgetAccessActive) {
+            root._displayPrimaryWidgetId = root.primaryWidgetId
+            return
+        }
+
+        if (root.accessPresentationProgress <= 0.001)
+            root._displayPrimaryWidgetId = ""
     }
 
     function reconcileNotificationPresentation() {
-        if (root.focusedWidgetActive)
+        if (root.widgetAccessActive)
             return
 
         if (root.notificationReady) {
             if (!root.peekSplitPlan.success) {
-                console.warn("[PeekContent] unable to preserve the companion piece within maximumWidth")
+                console.warn("[PeekContent] unable to preserve the Notification piece within maximumWidth")
                 return
             }
 
@@ -237,52 +254,40 @@ Item {
         root._displaySplitPlan = null
     }
 
-    function widgetStateFor(widgetId) {
-        const id = String(widgetId ?? "")
-        return id.length > 0 && root.widgetStates ? (root.widgetStates[id] ?? ({})) : ({})
+    function reconcileFocusedSplitPlan() {
+        if (!root.widgetAccessActive)
+            return
+
+        if (root._displayFocusedSplitOwner !== root.focusedSplitOwner) {
+            root._displayFocusedSplitOwner = root.focusedSplitOwner
+            root._displayFocusedSplitPlan = null
+        }
+
+        if (root.focusedSplitCandidate.success)
+            root._displayFocusedSplitPlan = root.focusedSplitCandidate
     }
 
-    function syncWidgetInputs() {
-        if (clockLoader.item) {
-            clockLoader.item.presentation = "compact"
-            clockLoader.item.widgetState = root.widgetStateFor("clock")
-        }
+    Content.IslandWidgetStrip {
+        id: overflowWidgetStrip
 
-        if (primaryWidgetLoader.item) {
-            primaryWidgetLoader.item.widgetState = root.widgetStateFor(root.primaryWidgetId)
-            if (typeof primaryWidgetLoader.item.hostInset !== "undefined")
-                primaryWidgetLoader.item.hostInset = root.shapeInset
-            if (typeof primaryWidgetLoader.item.hostHeight !== "undefined")
-                primaryWidgetLoader.item.hostHeight = root.requestedHeight
-        }
-
-        if (splitCompanionLoader.item) {
-            splitCompanionLoader.item.presentation = "peek"
-            splitCompanionLoader.item.widgetState = root.widgetStateFor(root.splitCompanionWidgetId)
-        }
-    }
-
-    Loader {
-        id: clockLoader
-
-        source: registry.widgetSourceFor("clock")
-        asynchronous: false
-
-        visible: opacity > 0.001
-        opacity: root.focusedWidgetActive ? 0.0 : 1.0
         x: root.baseStartOffset
         y: 0
-        width: root.clockPreferredWidth
+        width: naturalWidth
         height: root.height
+        visible: opacity > 0.001
+        opacity: 1.0 - root.accessPresentationProgress
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 170
-                easing.type: Easing.OutCubic
-            }
-        }
+        registry: registry
+        widgets: root.overflowWidgets
+        widgetStates: root.widgetStates
+        presentation: "compact"
+        spacing: root.baseSpacing
+        hostInset: root.shapeInset
+        hostHeight: root.requestedHeight
 
-        onLoaded: root.syncWidgetInputs()
+        onActivated: widgetId => root.activateWidget(widgetId, "compact")
+        onStatePatchRequested: (widgetId, patch) => root.widgetStatePatchRequested(widgetId, patch)
+        onAccessRequested: request => root.accessRequested(Object.assign({}, request))
     }
 
     Loader {
@@ -291,9 +296,7 @@ Item {
         source: root._displayNotificationSource
         asynchronous: false
         visible: opacity > 0.001
-        opacity: root.ownsNotificationSlot
-            && root._displayNotificationData
-            && (root.notificationReady || root.notificationData === null)
+        opacity: root.ownsNotificationSlot && root._displayNotificationData && (root.notificationReady || root.notificationData === null)
             ? root.splitProgress
             : 0.0
         x: root.liveLayout.pieceContentStartOffset
@@ -310,62 +313,61 @@ Item {
     MouseArea {
         anchors.fill: parent
         z: 0
-        visible: root.focusedWidgetActive && root.primaryWidgetVisible
-        enabled: visible
+        visible: root.widgetAccessActive && root.primaryWidgetVisible
+        enabled: visible && root.accessPresentationProgress > 0.9
         cursorShape: Qt.PointingHandCursor
 
-        onClicked: root.leaveFocusedWidgetPeek()
-    }
-
-    Binding {
-        target: primaryWidgetLoader.item
-        property: "presentation"
-        value: root.focusedWidgetActive ? "peek" : "compact"
-        when: primaryWidgetLoader.item !== null
+        onClicked: root.leaveWidgetAccess()
     }
 
     Item {
         id: primaryWidgetViewport
 
-        opacity: root.focusedWidgetActive ? root.focusedPresentationPresence : (root.primaryWidgetVisible ? 1.0 : 0.0)
-        scale: root.focusedWidgetActive ? 0.94 + root.focusedPresentationPresence * 0.06 : 1.0
+        visible: opacity > 0.001 && primaryWidgetHost.visible
+        opacity: root.accessPresentationProgress
+        scale: 0.94 + root.accessPresentationProgress * 0.06
         enabled: root.primaryWidgetVisible
         z: 1
-        x: root.focusedWidgetActive
-            ? root.liveLayout.otherContentStartOffset + Math.max((root.liveLayout.otherContentWidth - width) / 2, 0)
-            : root.baseStartOffset + root.clockPreferredWidth + (root.primaryWidgetVisible ? root.baseSpacing : 0)
-        width: root.focusedWidgetActive ? root.focusedWidgetViewportWidth : (root.primaryWidgetVisible ? root.primaryPreferredWidth : 0)
+        x: root.liveLayout.otherContentStartOffset + Math.max((root.liveLayout.otherContentWidth - width) / 2, 0)
+        width: root.focusedWidgetViewportWidth
         height: root.height
         clip: true
 
-        Loader {
-            id: primaryWidgetLoader
+        Content.IslandWidgetHost {
+            id: primaryWidgetHost
 
-            source: root.primaryWidgetSource
-            asynchronous: false
-
-            x: root.focusedWidgetActive ? (parent.width - width) / 2 : 0
+            x: (parent.width - width) / 2
             y: 0
-            width: root.focusedWidgetActive ? root.focusedWidgetWidth : parent.width
+            width: root.focusedWidgetWidth
             height: parent.height
 
-            onLoaded: {
-                root.syncWidgetInputs()
+            registry: registry
+            widgetId: root._displayPrimaryWidgetId
+            presentation: "peek"
+            widgetState: root.widgetStateFor(root._displayPrimaryWidgetId)
+            hostInset: root.shapeInset
+            hostHeight: root.requestedHeight
+            scaleWithVisibility: false
 
-                if (root.focusedWidgetActive && !Boolean(item?.widgetVisible ?? false))
-                    Qt.callLater(root.leaveFocusedWidgetPeek)
+            onActivated: root.activateWidget(root.primaryWidgetId, "peek")
+            onStatePatchRequested: patch => root.widgetStatePatchRequested(root.primaryWidgetId, patch)
+            onAccessRequested: request => root.accessRequested(Object.assign({}, request))
+            onWidgetReadyChanged: {
+                if (root.widgetAccessActive && widgetReady && !widgetVisible)
+                    Qt.callLater(root.leaveWidgetAccess)
+            }
+            onWidgetVisibleChanged: {
+                if (root.widgetAccessActive && widgetReady && !widgetVisible)
+                    Qt.callLater(root.leaveWidgetAccess)
             }
         }
     }
 
-    Loader {
-        id: splitCompanionLoader
+    Item {
+        id: splitCompanionViewport
 
-        source: root.splitCompanionSource
-        asynchronous: false
-
-        visible: opacity > 0.001
-        opacity: root.splitCompanionReady ? root.focusedPresentationPresence * root.splitProgress : 0.0
+        visible: opacity > 0.001 && splitCompanionHost.visible
+        opacity: root.accessPresentationProgress * root.splitProgress
         scale: 0.86 + root.splitProgress * 0.14
         enabled: root.splitCompanionReady && root.splitProgress > 0.9
         z: 2
@@ -373,8 +375,25 @@ Item {
         y: 0
         width: root.splitPlan.success ? root.liveLayout.pieceContentWidth : 0
         height: root.height
+        clip: true
 
-        onLoaded: root.syncWidgetInputs()
+        Content.IslandWidgetHost {
+            id: splitCompanionHost
+
+            anchors.fill: parent
+
+            registry: registry
+            widgetId: root.splitCompanionWidgetId
+            presentation: "peek"
+            widgetState: root.widgetStateFor(root.splitCompanionWidgetId)
+            hostInset: root.shapeInset
+            hostHeight: root.requestedHeight
+            scaleWithVisibility: false
+
+            onActivated: root.activateWidget(root.splitCompanionWidgetId, "peek")
+            onStatePatchRequested: patch => root.widgetStatePatchRequested(root.splitCompanionWidgetId, patch)
+            onAccessRequested: request => root.accessRequested(Object.assign({}, request))
+        }
     }
 
     onNotificationDataChanged: {
@@ -396,12 +415,19 @@ Item {
 
     onPeekSplitPlanChanged: Qt.callLater(root.reconcileNotificationPresentation)
     onCompactCandidatePlanChanged: Qt.callLater(root.reconcileNotificationPresentation)
+    onFocusedSplitCandidateChanged: root.reconcileFocusedSplitPlan()
+    onFocusedSplitOwnerChanged: root.reconcileFocusedSplitPlan()
 
     onSplitProgressChanged: {
         Qt.callLater(root.reconcileNotificationPresentation)
 
         if (root.splitProgress <= 0.001 && !root.notificationData)
             root.clearRetainedNotification()
+
+        if (root.splitProgress <= 0.001 && !root.splitCompanionReady) {
+            root._displayFocusedSplitOwner = ""
+            root._displayFocusedSplitPlan = null
+        }
     }
 
     onOwnsNotificationSlotChanged: {
@@ -409,50 +435,28 @@ Item {
             root.clearRetainedNotification()
     }
 
-    onFocusedWidgetActiveChanged: {
-        root.syncWidgetInputs()
-        if (root.focusedWidgetActive) {
-            root._focusedBackPending = false
-            if (root.primaryWidgetReady && !root.primaryWidgetVisible)
-                Qt.callLater(root.leaveFocusedWidgetPeek)
-        }
+    onWidgetAccessActiveChanged: {
+        root._focusedBackPending = false
+        root.reconcileDisplayedPrimaryWidget()
+        root.reconcileFocusedSplitPlan()
+        if (root.widgetAccessActive && root.primaryWidgetReady && !root.primaryWidgetVisible)
+            Qt.callLater(root.leaveWidgetAccess)
     }
 
-    onPrimaryWidgetVisibleChanged: {
-        if (root.focusedWidgetActive && root.primaryWidgetReady && !root.primaryWidgetVisible)
-            root.leaveFocusedWidgetPeek()
+    onSceneContextChanged: {
+        root._focusedBackPending = false
+        root.reconcileDisplayedPrimaryWidget()
+        root.reconcileFocusedSplitPlan()
+        if (root.widgetAccessActive && root.primaryWidgetReady && !root.primaryWidgetVisible)
+            Qt.callLater(root.leaveWidgetAccess)
     }
 
-    onWidgetStatesChanged: root.syncWidgetInputs()
-
-    Connections {
-        target: splitCompanionLoader.item
-        ignoreUnknownSignals: true
-
-        function onActivated() {
-            const request = root.splitCompanionSpec?.activationRequest
-            if (request)
-                root.sceneRequested(Object.assign({}, request))
-        }
-
-        function onStatePatchRequested(patch) {
-            root.widgetStatePatchRequested(root.splitCompanionWidgetId, patch)
-        }
+    Component.onCompleted: {
+        root.reconcileDisplayedPrimaryWidget()
+        root.reconcileFocusedSplitPlan()
+        if (root.widgetAccessActive && root.primaryWidgetReady && !root.primaryWidgetVisible)
+            Qt.callLater(root.leaveWidgetAccess)
     }
 
-    Connections {
-        target: primaryWidgetLoader.item
-        ignoreUnknownSignals: true
-
-        function onActivated() {
-            if (root.focusedWidgetActive)
-                root.leaveFocusedWidgetPeek()
-            else
-                root.enterFocusedWidgetPeek(root.primaryWidgetId)
-        }
-
-        function onStatePatchRequested(patch) {
-            root.widgetStatePatchRequested(root.primaryWidgetId, patch)
-        }
-    }
+    onAccessPresentationProgressChanged: root.reconcileDisplayedPrimaryWidget()
 }

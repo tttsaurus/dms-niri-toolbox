@@ -3,19 +3,18 @@ import QtQuick
 import qs.Common
 import qs.Widgets
 
-Item {
+import "../../core" as Core
+
+Core.IslandWidget {
     id: root
 
-    property string presentation: "compact"
-    property var widgetState: ({})
     property date now: new Date()
 
-    readonly property bool widgetVisible: true
-    readonly property real minimumWidthHint: Math.max(1, clockRow.implicitWidth)
-    readonly property real preferredWidthHint: root.minimumWidthHint
-    // scene skeletons currently own height; this protocol hint is informational only
-    readonly property real preferredHeightHint: 36
-    readonly property bool interactive: false
+    contentAvailable: true
+    minimumWidthHint: Math.max(1, clockRow.implicitWidth)
+    preferredWidthHint: root.minimumWidthHint
+    preferredHeightHint: 36
+    interactive: false
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
@@ -28,7 +27,7 @@ Item {
     Timer {
         interval: 1000
         repeat: true
-        running: root.visible
+        running: root.widgetVisible
         triggeredOnStart: true
         onTriggered: root.now = new Date()
     }

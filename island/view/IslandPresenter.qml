@@ -46,9 +46,7 @@ Item {
         return Number.isFinite(value) ? Math.max(0.01, Math.min(0.99, value)) : 0.5
     }
     readonly property bool animateContentChange: root.loadedContent?.animateContentChange === true
-    readonly property string contentAnimation: String(
-        root.loadedContent?.contentAnimation ?? "subtle"
-    )
+    readonly property string contentAnimation: String(root.loadedContent?.contentAnimation ?? "subtle")
     readonly property int contentAnimationRevision: {
         const value = Number(root.loadedContent?.animationRevision ?? 0)
         return Number.isFinite(value) ? Math.floor(value) : 0
@@ -122,9 +120,9 @@ Item {
 
     function syncContentItem(item) {
         root.setOptionalContentProperty(item, "notificationData", root.controller.currentNotification)
-        root.setOptionalContentProperty(item, "sceneContext", root.controller.sceneContext)
         root.setOptionalContentProperty(item, "widgetStates", root.controller.widgetStates)
         root.setOptionalContentProperty(item, "islandContext", root.contentContext())
+        root.setOptionalContentProperty(item, "sceneContext", root.controller.sceneContext)
     }
 
     function syncContentInputs() {
@@ -308,6 +306,10 @@ Item {
     Connections {
         target: root.loadedContent
         ignoreUnknownSignals: true
+
+        function onAccessRequested(request) {
+            root.controller.requestAccess(request)
+        }
 
         function onSceneRequested(request) {
             root.controller.requestScene(request)

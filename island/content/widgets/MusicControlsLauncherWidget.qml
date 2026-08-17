@@ -3,24 +3,20 @@ import QtQuick
 import qs.Common
 import qs.Widgets
 
-Item {
+import "../../core" as Core
+
+Core.IslandWidget {
     id: root
 
-    property string presentation: "peek"
-    property var widgetState: ({})
-
-    readonly property bool widgetVisible: true
-    readonly property real minimumWidthHint: 16
-    readonly property real preferredWidthHint: root.minimumWidthHint
-    readonly property real preferredHeightHint: 36
-    readonly property bool interactive: true
+    presentation: "peek"
+    contentAvailable: true
+    minimumWidthHint: 16
+    preferredWidthHint: root.minimumWidthHint
+    preferredHeightHint: 36
+    interactive: true
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
-
-    signal activated()
-    signal statePatchRequested(var patch)
-    signal actionRequested(string action, var payload)
 
     DankIcon {
         anchors.centerIn: parent

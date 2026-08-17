@@ -5,15 +5,18 @@ import qs.Common
 import qs.Services
 import qs.Widgets
 
-Item {
+import "../../core" as Core
+
+Core.IslandWidget {
     id: root
 
-    property string presentation: "expanded"
-    property var widgetState: ({})
+    presentation: "expanded"
     property bool isSeeking: false
 
     readonly property MprisPlayer player: MprisController.activePlayer
-    readonly property bool widgetVisible: root.player !== null && root.player.playbackState !== MprisPlaybackState.Stopped
+
+    contentAvailable: root.player !== null && root.player.playbackState !== MprisPlaybackState.Stopped
+    
     readonly property bool playing: root.widgetVisible && !!root.player?.isPlaying
     readonly property bool canTogglePlaying: root.widgetVisible && !!root.player?.canTogglePlaying
     readonly property bool canGoPrevious: root.widgetVisible && (!!root.player?.canGoPrevious || (!!root.player?.canSeek && root.player.position > 8))
@@ -38,17 +41,13 @@ Item {
         return String(root.player?.identity || "").trim()
     }
 
-    readonly property real minimumWidthHint: 440
-    readonly property real preferredWidthHint: 560
-    readonly property real preferredHeightHint: 230
-    readonly property bool interactive: true
+    minimumWidthHint: 440
+    preferredWidthHint: 560
+    preferredHeightHint: 230
+    interactive: true
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
-
-    signal activated()
-    signal statePatchRequested(var patch)
-    signal actionRequested(string action, var payload)
 
     function previous() {
         if (!root.canGoPrevious)

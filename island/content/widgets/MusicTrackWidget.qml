@@ -6,17 +6,19 @@ import qs.Common
 import qs.Services
 import qs.Widgets
 
-Item {
+import "../../core" as Core
+
+Core.IslandWidget {
     id: root
 
-    property string presentation: "compact"
-    property var widgetState: ({})
     // visual host metric supplied by the composing scene
     property real hostInset: 5
     property real hostHeight: 0
 
     readonly property MprisPlayer player: MprisController.activePlayer
-    readonly property bool widgetVisible: root.player !== null && root.player.playbackState !== MprisPlaybackState.Stopped
+    
+    contentAvailable: root.player !== null && root.player.playbackState !== MprisPlaybackState.Stopped
+
     readonly property bool detailed: root.presentation === "peek" || root.presentation === "expanded"
     readonly property bool playing: root.widgetVisible && !!root.player?.isPlaying
     readonly property bool canTogglePlaying: root.widgetVisible && !!root.player?.canTogglePlaying
@@ -76,11 +78,10 @@ Item {
     readonly property real metadataTitleWidth: root.trackArtist.length > 0 && root.metadataTextNaturalWidth > 0 ? root.metadataTextWidth * root.metadataTitleNaturalWidth / root.metadataTextNaturalWidth : root.metadataTextWidth
     readonly property real metadataArtistWidth: root.trackArtist.length > 0 ? Math.max(root.metadataTextWidth - root.metadataTitleWidth, 0) : 0
 
-    readonly property real minimumWidthHint: root.detailed ? root.detailedFixedWidth + root.metadataMinimumWidth : root.compactNaturalWidth
-    readonly property real preferredWidthHint: root.detailed ? root.detailedFixedWidth + root.metadataPreferredWidth : root.compactNaturalWidth
-    // scene skeletons currently own height; this protocol hint is informational only
-    readonly property real preferredHeightHint: 36
-    readonly property bool interactive: true
+    minimumWidthHint: root.detailed ? root.detailedFixedWidth + root.metadataMinimumWidth : root.compactNaturalWidth
+    preferredWidthHint: root.detailed ? root.detailedFixedWidth + root.metadataPreferredWidth : root.compactNaturalWidth
+    preferredHeightHint: 36
+    interactive: true
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
@@ -102,10 +103,6 @@ Item {
         font: metadataArtist.font
         text: root.trackArtist
     }
-
-    signal activated()
-    signal statePatchRequested(var patch)
-    signal actionRequested(string action, var payload)
 
     function togglePlayback() {
         const current = root.player

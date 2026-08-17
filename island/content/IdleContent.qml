@@ -1,6 +1,7 @@
 import QtQuick
 
 import "../core" as Core
+import "components" as Content
 
 Item {
     id: root
@@ -10,11 +11,17 @@ Item {
     property var widgetStates: ({})
     property var islandContext: null
 
+    signal accessRequested(var request)
     signal sceneRequested(var request)
     signal widgetStatePatchRequested(string widgetId, var patch)
     signal notificationDismissRequested()
     signal dismissRequested()
     signal clearRequested()
+
+    readonly property var widgets: [
+        "clock",
+        "musicTrack"
+    ]
 
     readonly property real piecePadding: 7
     readonly property real contentPadding: 8
@@ -23,7 +30,7 @@ Item {
     readonly property real compactMaximumWidth: Math.max(root.idleWidth, Number(root.islandContext?.compactMaximumWidth ?? root.idleWidth))
     readonly property real radiusDip: Math.max(Number(root.islandContext?.radiusDip ?? 18), 0)
     readonly property real shapeInset: Math.max(Number(root.islandContext?.shapeInset ?? 5), 0)
-    readonly property bool ownsNotificationSlot: String(root.sceneContext?.exclusiveWidgetId ?? "").length === 0
+    readonly property bool ownsNotificationSlot: String(root.sceneContext?.accessKind ?? "") !== "widget"
 
     readonly property url notificationSource: root.ownsNotificationSlot
         ? registry.notificationSourceFor(root.notificationData)
@@ -35,13 +42,7 @@ Item {
         && String(root._displayNotificationSource) === String(root.notificationSource)
         && notificationLoader.status === Loader.Ready
 
-    readonly property real clockPreferredWidth: Math.max(Number(clockLoader.item?.preferredWidthHint ?? clockLoader.item?.implicitWidth ?? 52), 1)
-    readonly property bool musicWidgetVisible: Boolean(musicLoader.item?.widgetVisible ?? false)
-    readonly property real rawMusicPreferredWidth: Math.max(Number(musicLoader.item?.preferredWidthHint ?? musicLoader.item?.implicitWidth ?? 104), 1)
-    readonly property real baseNaturalWidth: root.clockPreferredWidth + (root.musicWidgetVisible ? root.baseSpacing + root.rawMusicPreferredWidth : 0)
-
-    property real musicLayoutPresence: root.musicWidgetVisible ? 1.0 : 0.0
-
+    readonly property real baseNaturalWidth: idleWidgetStrip.naturalWidth
     readonly property real notificationPreferredWidth: Math.max(Number(notificationLoader.item?.preferredWidthHint ?? notificationLoader.item?.implicitWidth ?? 0), 0)
     readonly property string notificationSide: String(notificationLoader.item?.preferredSideHint ?? "right") === "left" ? "left" : "right"
 
@@ -76,25 +77,20 @@ Item {
         root.piecePadding
     )
 
-    readonly property real requestedWidth: root.splitPlan.success && (root.notificationReady || root.splitProgress > 0.001) ? root.splitPlan.islandWidth : root.baseIslandWidth
+    readonly property real requestedWidth: root.splitPlan.success && (root.notificationReady || root.splitProgress > 0.001)
+        ? root.splitPlan.islandWidth
+        : root.baseIslandWidth
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
     readonly property real requestedReservationWidth: root.requestedWidth
 
     readonly property bool animateContentChange: root.notificationReady
     readonly property string contentAnimation: String(notificationLoader.item?.animationHint ?? "subtle")
-    readonly property int animationRevision: _animationRevision
+    readonly property int animationRevision: root._animationRevision
 
     property int _animationRevision: 0
     property url _displayNotificationSource: ""
     property var _displayNotificationData: null
     property var _displaySplitPlan: null
-
-    Behavior on musicLayoutPresence {
-        NumberAnimation {
-            duration: 220
-            easing.type: Easing.OutCubic
-        }
-    }
 
     Core.IslandContentRegistry {
         id: registry
@@ -117,7 +113,8 @@ Item {
             presentation: "peek",
             context: {
                 presentationRole: "notificationOverflow",
-                compactRadiusDip: root.radiusDip
+                compactRadiusDip: root.radiusDip,
+                widgets: root.widgets.slice()
             },
             notificationPolicy: "keep"
         })
@@ -129,61 +126,42 @@ Item {
         root._displaySplitPlan = null
     }
 
-    function widgetStateFor(widgetId) {
-        const id = String(widgetId ?? "")
-        return id.length > 0 && root.widgetStates ? (root.widgetStates[id] ?? ({})) : ({})
-    }
-
-    function syncWidgetInputs() {
-        if (clockLoader.item) {
-            clockLoader.item.presentation = "compact"
-            clockLoader.item.widgetState = root.widgetStateFor("clock")
-        }
-
-        if (musicLoader.item) {
-            musicLoader.item.presentation = "compact"
-            musicLoader.item.widgetState = root.widgetStateFor("musicTrack")
-            musicLoader.item.hostInset = root.shapeInset
-            musicLoader.item.hostHeight = root.requestedHeight
-        }
+    function activateWidget(widgetId) {
+        const request = registry.activationRequestFor(widgetId, "compact")
+        if (request)
+            root.accessRequested(request)
     }
 
     Item {
         id: basePiece
 
-        x: root.wantsSplit || root.splitProgress > 0.001 ? root.liveLayout.otherContentStartOffset : root.contentPadding
+        x: root.wantsSplit || root.splitProgress > 0.001
+            ? root.liveLayout.otherContentStartOffset
+            : root.contentPadding
         y: 0
-        width: root.wantsSplit || root.splitProgress > 0.001 ? root.liveLayout.otherContentWidth : Math.max(root.width - root.contentPadding * 2, 0)
+        width: root.wantsSplit || root.splitProgress > 0.001
+            ? root.liveLayout.otherContentWidth
+            : Math.max(root.width - root.contentPadding * 2, 0)
         height: root.height
 
-        Row {
+        Content.IslandWidgetStrip {
+            id: idleWidgetStrip
+
             anchors.centerIn: parent
-            spacing: root.baseSpacing * root.musicLayoutPresence
+            width: naturalWidth
+            height: parent.height
 
-            Loader {
-                id: clockLoader
+            registry: registry
+            widgets: root.widgets
+            widgetStates: root.widgetStates
+            presentation: "compact"
+            spacing: root.baseSpacing
+            hostInset: root.shapeInset
+            hostHeight: root.requestedHeight
 
-                width: root.clockPreferredWidth
-                height: basePiece.height
-                source: registry.widgetSourceFor("clock")
-                asynchronous: false
-
-                onLoaded: root.syncWidgetInputs()
-            }
-
-            Loader {
-                id: musicLoader
-
-                width: root.rawMusicPreferredWidth * root.musicLayoutPresence
-                height: basePiece.height
-                source: registry.widgetSourceFor("musicTrack")
-                asynchronous: false
-                opacity: root.musicLayoutPresence
-                scale: 0.94 + root.musicLayoutPresence * 0.06
-                enabled: root.musicWidgetVisible
-
-                onLoaded: root.syncWidgetInputs()
-            }
+            onActivated: widgetId => root.activateWidget(widgetId)
+            onStatePatchRequested: (widgetId, patch) => root.widgetStatePatchRequested(widgetId, patch)
+            onAccessRequested: request => root.accessRequested(Object.assign({}, request))
         }
     }
 
@@ -193,9 +171,7 @@ Item {
         source: root._displayNotificationSource
         asynchronous: false
         visible: opacity > 0.001
-        opacity: root.ownsNotificationSlot
-            && root._displayNotificationData
-            && (root.notificationReady || root.notificationData === null)
+        opacity: root.ownsNotificationSlot && root._displayNotificationData && (root.notificationReady || root.notificationData === null)
             ? root.splitProgress
             : 0.0
         x: root.liveLayout.pieceContentStartOffset
@@ -236,27 +212,5 @@ Item {
     onSplitProgressChanged: {
         if (root.splitProgress <= 0.001 && !root.notificationData)
             root.clearRetainedNotification()
-    }
-
-    onWidgetStatesChanged: root.syncWidgetInputs()
-
-    Connections {
-        target: musicLoader.item
-        ignoreUnknownSignals: true
-
-        function onActivated() {
-            root.sceneRequested({
-                navigation: "push",
-                presentation: "peek",
-                context: {
-                    exclusiveWidgetId: "musicTrack"
-                },
-                notificationPolicy: "suspend"
-            })
-        }
-
-        function onStatePatchRequested(patch) {
-            root.widgetStatePatchRequested("musicTrack", patch)
-        }
     }
 }
