@@ -90,7 +90,7 @@ ShapeSample sampleGeometry(vec2 p, vec2 halfSize, float radius) {
         return wholeShape;
     }
 
-    float percentage = clamp(ubuf.splitPercentage, 0.1, 0.9);
+    float percentage = clamp(ubuf.splitPercentage, 0.01, 0.99);
 
     float fullWidth = halfSize.x * 2.0;
     float splitGap = max(ubuf.shapeInset * 2.0, 2.0);

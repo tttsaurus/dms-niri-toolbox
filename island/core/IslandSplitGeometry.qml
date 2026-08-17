@@ -4,8 +4,8 @@ QtObject {
     id: root
 
     // keep these values in lock-step with dynamic_island.frag
-    readonly property real minimumPercentage: 0.1
-    readonly property real maximumPercentage: 0.9
+    readonly property real minimumPercentage: 0.01
+    readonly property real maximumPercentage: 0.99
     readonly property real minimumPieceEpsilon: 0.001
 
     function finitePositive(value, fallback) {
