@@ -29,6 +29,7 @@ Item {
     readonly property string presentationRole: String(root.sceneContext?.presentationRole ?? "")
     readonly property string exclusiveWidgetId: String(root.sceneContext?.exclusiveWidgetId ?? "")
     readonly property bool focusedWidgetActive: root.exclusiveWidgetId.length > 0
+    readonly property bool ownsNotificationSlot: !root.focusedWidgetActive
     readonly property string primaryWidgetId: root.focusedWidgetActive ? root.exclusiveWidgetId : "musicTrack"
     readonly property url primaryWidgetSource: registry.widgetSourceFor(root.primaryWidgetId)
     readonly property bool primaryWidgetReady:
@@ -59,9 +60,11 @@ Item {
     property real focusedPresentationPresence: root.focusedWidgetActive && root.primaryWidgetVisible ? 1.0 : 0.0
     property bool _focusedBackPending: false
 
-    readonly property url notificationSource: root.focusedWidgetActive ? "" : registry.notificationSourceFor(root.notificationData)
+    readonly property url notificationSource: root.ownsNotificationSlot
+        ? registry.notificationSourceFor(root.notificationData)
+        : ""
     readonly property bool notificationReady:
-        !root.focusedWidgetActive
+        root.ownsNotificationSlot
         && root.notificationData !== null
         && String(root.notificationSource).length > 0
         && String(root._displayNotificationSource) === String(root.notificationSource)
@@ -288,7 +291,11 @@ Item {
         source: root._displayNotificationSource
         asynchronous: false
         visible: opacity > 0.001
-        opacity: root._displayNotificationData && (root.notificationReady || root.notificationData === null) ? root.splitProgress : 0.0
+        opacity: root.ownsNotificationSlot
+            && root._displayNotificationData
+            && (root.notificationReady || root.notificationData === null)
+            ? root.splitProgress
+            : 0.0
         x: root.liveLayout.pieceContentStartOffset
         y: 0
         width: root.splitPlan.success ? root.splitPlan.pieceContentWidth : 0
@@ -394,6 +401,11 @@ Item {
         Qt.callLater(root.reconcileNotificationPresentation)
 
         if (root.splitProgress <= 0.001 && !root.notificationData)
+            root.clearRetainedNotification()
+    }
+
+    onOwnsNotificationSlotChanged: {
+        if (!root.ownsNotificationSlot)
             root.clearRetainedNotification()
     }
 

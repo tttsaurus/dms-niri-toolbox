@@ -20,6 +20,10 @@ Item {
     readonly property int geometryAnimationDuration: 260
 
     property bool _geometryReady: false
+    property real _geometryStartWidth: 0
+    property real _geometryStartHeight: 0
+    property real _geometryEndWidth: 0
+    property real _geometryEndHeight: 0
 
     readonly property int islandCompactRadius: {
         const value = Number(pluginData.islandCompactRadius ?? 18)
@@ -43,6 +47,43 @@ Item {
             geometryCommitTimer.restart()
     }
 
+    function geometryEndpointMatches(widthValue, heightValue) {
+        return Math.abs(root._geometryEndWidth - widthValue) < 0.01
+            && Math.abs(root._geometryEndHeight - heightValue) < 0.01
+    }
+
+    function geometryMatches(widthValue, heightValue) {
+        return Math.abs(root.width - widthValue) < 0.01
+            && Math.abs(root.height - heightValue) < 0.01
+    }
+
+    function applyGeometryProgress(value) {
+        const progress = root.clamp(Number(value), 0, 1)
+        root.width = root._geometryStartWidth
+            + (root._geometryEndWidth - root._geometryStartWidth) * progress
+        root.height = root._geometryStartHeight
+            + (root._geometryEndHeight - root._geometryStartHeight) * progress
+    }
+
+    function snapGeometry(widthValue, heightValue) {
+        root._geometryStartWidth = widthValue
+        root._geometryStartHeight = heightValue
+        root._geometryEndWidth = widthValue
+        root._geometryEndHeight = heightValue
+        geometryClock.progress = 1.0
+        root.width = widthValue
+        root.height = heightValue
+    }
+
+    function finishGeometryCommit() {
+        root.applyGeometryProgress(1.0)
+
+        const nextWidth = Number(root.targetWidth)
+        const nextHeight = Number(root.targetHeight)
+        if (!root.geometryEndpointMatches(nextWidth, nextHeight))
+            root.scheduleGeometryCommit()
+    }
+
     function commitGeometry(animated) {
         const nextWidth = Number(root.targetWidth)
         const nextHeight = Number(root.targetHeight)
@@ -50,21 +91,33 @@ Item {
                 || !Number.isFinite(nextHeight) || nextHeight <= 0) return
 
         geometryCommitTimer.stop()
+
+        // A coalesced scene update can resolve back to the endpoint already in
+        // flight. Keep that transaction running instead of stopping both axes
+        // at whatever intermediate frame happened to receive the update.
+        if (geometryAnimation.running
+                && root.geometryEndpointMatches(nextWidth, nextHeight)) return
+
+        const currentWidth = root.width
+        const currentHeight = root.height
         geometryAnimation.stop()
 
-        if (!animated || root.width <= 0 || root.height <= 0) {
-            root.width = nextWidth
-            root.height = nextHeight
+        if (!animated || currentWidth <= 0 || currentHeight <= 0) {
+            root.snapGeometry(nextWidth, nextHeight)
             return
         }
 
-        if (Math.abs(root.width - nextWidth) < 0.01
-                && Math.abs(root.height - nextHeight) < 0.01) return
+        if (root.geometryMatches(nextWidth, nextHeight)) {
+            root.snapGeometry(nextWidth, nextHeight)
+            return
+        }
 
-        widthTransition.from = root.width
-        widthTransition.to = nextWidth
-        heightTransition.from = root.height
-        heightTransition.to = nextHeight
+        root._geometryStartWidth = currentWidth
+        root._geometryStartHeight = currentHeight
+        root._geometryEndWidth = nextWidth
+        root._geometryEndHeight = nextHeight
+        geometryClock.progress = 0.0
+        root.applyGeometryProgress(0.0)
         geometryAnimation.restart()
     }
 
@@ -154,26 +207,23 @@ Item {
         onTriggered: root.commitGeometry(true)
     }
 
-    ParallelAnimation {
+    QtObject {
+        id: geometryClock
+
+        property real progress: 1.0
+        onProgressChanged: root.applyGeometryProgress(progress)
+    }
+
+    NumberAnimation {
         id: geometryAnimation
 
-        NumberAnimation {
-            id: widthTransition
-
-            target: root
-            property: "width"
-            duration: root.geometryAnimationDuration
-            easing.type: Easing.OutQuart
-        }
-
-        NumberAnimation {
-            id: heightTransition
-
-            target: root
-            property: "height"
-            duration: root.geometryAnimationDuration
-            easing.type: Easing.OutQuart
-        }
+        target: geometryClock
+        property: "progress"
+        from: 0.0
+        to: 1.0
+        duration: root.geometryAnimationDuration
+        easing.type: Easing.OutQuart
+        onFinished: root.finishGeometryCommit()
     }
 
     onContentChangeRevisionChanged: {

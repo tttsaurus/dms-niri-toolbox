@@ -23,10 +23,14 @@ Item {
     readonly property real compactMaximumWidth: Math.max(root.idleWidth, Number(root.islandContext?.compactMaximumWidth ?? root.idleWidth))
     readonly property real radiusDip: Math.max(Number(root.islandContext?.radiusDip ?? 18), 0)
     readonly property real shapeInset: Math.max(Number(root.islandContext?.shapeInset ?? 5), 0)
+    readonly property bool ownsNotificationSlot: String(root.sceneContext?.exclusiveWidgetId ?? "").length === 0
 
-    readonly property url notificationSource: registry.notificationSourceFor(root.notificationData)
+    readonly property url notificationSource: root.ownsNotificationSlot
+        ? registry.notificationSourceFor(root.notificationData)
+        : ""
     readonly property bool notificationReady:
-        root.notificationData !== null
+        root.ownsNotificationSlot
+        && root.notificationData !== null
         && String(root.notificationSource).length > 0
         && String(root._displayNotificationSource) === String(root.notificationSource)
         && notificationLoader.status === Loader.Ready
@@ -189,7 +193,11 @@ Item {
         source: root._displayNotificationSource
         asynchronous: false
         visible: opacity > 0.001
-        opacity: root._displayNotificationData && (root.notificationReady || root.notificationData === null) ? root.splitProgress : 0.0
+        opacity: root.ownsNotificationSlot
+            && root._displayNotificationData
+            && (root.notificationReady || root.notificationData === null)
+            ? root.splitProgress
+            : 0.0
         x: root.liveLayout.pieceContentStartOffset
         y: 0
         width: root.splitPlan.success ? root.splitPlan.pieceContentWidth : 0
@@ -216,6 +224,11 @@ Item {
         } else if (root.splitProgress <= 0.001) {
             root.clearRetainedNotification()
         }
+    }
+
+    onOwnsNotificationSlotChanged: {
+        if (!root.ownsNotificationSlot)
+            root.clearRetainedNotification()
     }
 
     onCompactSplitPlanChanged: Qt.callLater(root.reconcileNotificationPresentation)
