@@ -12,11 +12,9 @@ Item {
     property real minimumWidthHint: 1
     property real preferredWidthHint: root.minimumWidthHint
     property real preferredHeightHint: 36
-    property bool interactive: false
 
     signal activated()
     signal statePatchRequested(var patch)
-    signal actionRequested(string action, var payload)
     signal accessRequested(var request)
 
     function patchState(patch) {

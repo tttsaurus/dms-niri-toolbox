@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 
-import qs.Common
 import qs.Modules.Plugins
 
 import "core" as Core

@@ -29,15 +29,10 @@ QtObject {
         switch (String(widgetId ?? "")) {
             case "clock":
                 return {
-                    widgetId: "clock",
-                    source: Qt.resolvedUrl("../content/widgets/ClockWidget.qml"),
-                    activations: ({}),
-                    presentations: ({}),
-                    companions: ({})
+                    source: Qt.resolvedUrl("../content/widgets/ClockWidget.qml")
                 }
             case "musicTrack":
                 return {
-                    widgetId: "musicTrack",
                     source: Qt.resolvedUrl("../content/widgets/MusicTrackWidget.qml"),
                     activations: {
                         compact: {
@@ -77,7 +72,6 @@ QtObject {
                 }
             case "musicControlsLauncher":
                 return {
-                    widgetId: "musicControlsLauncher",
                     source: Qt.resolvedUrl("../content/widgets/MusicControlsLauncherWidget.qml"),
                     activations: {
                         peek: {
@@ -85,13 +79,10 @@ QtObject {
                             widgetId: "musicControls",
                             presentation: "expanded"
                         }
-                    },
-                    presentations: ({}),
-                    companions: ({})
+                    }
                 }
             case "musicControls":
                 return {
-                    widgetId: "musicControls",
                     source: Qt.resolvedUrl("../content/widgets/MusicControlsWidget.qml"),
                     activations: {
                         expanded: {
@@ -103,8 +94,7 @@ QtObject {
                             title: "Music",
                             backWhenUnavailable: true
                         }
-                    },
-                    companions: ({})
+                    }
                 }
             default:
                 return null

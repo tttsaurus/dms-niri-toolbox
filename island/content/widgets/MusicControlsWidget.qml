@@ -43,7 +43,6 @@ Core.IslandWidget {
     minimumWidthHint: 440
     preferredWidthHint: 560
     preferredHeightHint: 230
-    interactive: true
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
@@ -53,7 +52,6 @@ Core.IslandWidget {
             return
 
         MprisController.previousOrRewind()
-        root.actionRequested("previous", {})
     }
 
     function togglePlaying() {
@@ -61,7 +59,6 @@ Core.IslandWidget {
             return
 
         root.player.togglePlaying()
-        root.actionRequested("togglePlaying", {})
     }
 
     function next() {
@@ -69,7 +66,6 @@ Core.IslandWidget {
             return
 
         root.player.next()
-        root.actionRequested("next", {})
     }
 
     // Kept below the actual controls. Any click not consumed by an interactive

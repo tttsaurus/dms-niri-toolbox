@@ -12,7 +12,6 @@ Core.IslandWidget {
     minimumWidthHint: 16
     preferredWidthHint: root.minimumWidthHint
     preferredHeightHint: 36
-    interactive: true
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint

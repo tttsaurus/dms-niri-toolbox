@@ -88,7 +88,6 @@ Core.IslandWidget {
     minimumWidthHint: root.detailed ? root.detailedFixedWidth + root.metadataMinimumWidth : root.compactNaturalWidth
     preferredWidthHint: root.detailed ? root.detailedFixedWidth + root.metadataPreferredWidth : root.compactNaturalWidth
     preferredHeightHint: 36
-    interactive: true
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
@@ -117,7 +116,6 @@ Core.IslandWidget {
             return
 
         current.togglePlaying()
-        root.actionRequested("togglePlaying", {})
     }
 
     function resetWave() {

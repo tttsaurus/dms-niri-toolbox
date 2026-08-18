@@ -13,22 +13,13 @@ Item {
     property real hostHeight: root.height
     property bool animateVisibility: true
 
-    signal activated(string widgetId)
     signal statePatchRequested(string widgetId, var patch)
-    signal actionRequested(string widgetId, string action, var payload)
     signal accessRequested(var request)
 
     readonly property real naturalWidth: widgetRow.implicitWidth
-    readonly property int count: widgetRepeater.count
 
     implicitWidth: root.naturalWidth
     implicitHeight: root.hostHeight
-
-    function widgetIdFor(entry) {
-        if (entry && typeof entry === "object")
-            return String(entry.widgetId ?? entry.id ?? "")
-        return String(entry ?? "")
-    }
 
     function widgetStateFor(widgetId) {
         const id = String(widgetId ?? "")
@@ -59,7 +50,7 @@ Item {
             delegate: Item {
                 id: widgetSlot
 
-                readonly property string widgetId: root.widgetIdFor(modelData)
+                readonly property string widgetId: String(modelData ?? "")
                 readonly property real widgetPresence: widgetHost.visibilityProgress
                 readonly property real leadingSpacing: index > 0
                     ? root.spacing * widgetHost.visibilityProgress * root.presenceBefore(index)
@@ -84,15 +75,10 @@ Item {
                     hostHeight: root.hostHeight
                     animateVisibility: root.animateVisibility
 
-                    onActivated: function() {
-                        root.activated(widgetSlot.widgetId)
-                    }
                     onStatePatchRequested: function(patch) {
                         root.statePatchRequested(widgetSlot.widgetId, patch)
                     }
-                    onActionRequested: function(action, payload) {
-                        root.actionRequested(widgetSlot.widgetId, action, payload)
-                    }
+
                     onAccessRequested: function(request) {
                         root.accessRequested(Object.assign({}, request))
                     }

@@ -30,7 +30,7 @@ Item {
     readonly property real requestedWidth: root.saneDimension(
         root.loadedContent?.requestedWidth,
         root.compactWidth,
-        root.controller.mode === "compact" ? root.effectiveCompactMaximumWidth : root.maximumWidth
+        root.maximumWidth
     )
     readonly property real requestedHeight: root.saneDimension(
         root.loadedContent?.requestedHeight,
@@ -56,7 +56,7 @@ Item {
         if (!Number.isFinite(contentReservation))
             return root.targetWidth
 
-        return Math.max(root.targetWidth, Math.min(root.effectiveCompactMaximumWidth, contentReservation))
+        return Math.max(root.targetWidth, Math.min(root.maximumWidth, contentReservation))
     }
 
     property real retainedCompactReservationWidth: root.compactWidth
@@ -87,12 +87,10 @@ Item {
 
     function contentContext() {
         return {
-            mode: root.controller.mode,
             idleWidth: root.compactWidth,
             compactMaximumWidth: root.effectiveCompactMaximumWidth,
             compactHeight: root.compactHeight,
             maximumWidth: root.maximumWidth,
-            maximumHeight: root.maximumHeight,
             radiusDip: shell.targetRadius,
             liveRadiusDip: shell.animatedRadius,
             liveSplitPercentage: shell.animatedSplitPercentage,
@@ -183,7 +181,6 @@ Item {
     onCompactHeightChanged: root.syncContentInputs()
     onCompactMaximumWidthChanged: root.syncContentInputs()
     onMaximumWidthChanged: root.syncContentInputs()
-    onMaximumHeightChanged: root.syncContentInputs()
 
     Connections {
         target: root.controller
@@ -312,23 +309,15 @@ Item {
         }
 
         function onSceneRequested(request) {
-            root.controller.requestScene(request)
+            root.controller.requestRootPresentation(request)
         }
 
         function onWidgetStatePatchRequested(widgetId, patch) {
             root.controller.patchWidgetState(widgetId, patch)
         }
 
-        function onNotificationDismissRequested() {
-            root.controller.dismissCurrentNotification()
-        }
-
         function onDismissRequested() {
             root.controller.dismissScene()
-        }
-        
-        function onClearRequested() {
-            root.controller.clear()
         }
     }
 }

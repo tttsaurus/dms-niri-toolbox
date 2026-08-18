@@ -31,7 +31,6 @@ Core.IslandWidget {
     minimumWidthHint: 80
     preferredWidthHint: 140
     preferredHeightHint: 36
-    interactive: true
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
@@ -55,7 +54,6 @@ Core.IslandWidget {
 | `minimumWidthHint` | Smallest meaningful layout width |
 | `preferredWidthHint` | Natural width requested from the renderer |
 | `preferredHeightHint` | Natural height, mainly used by Expanded |
-| `interactive` | Semantic input hint exposed by the Host |
 
 `widgetVisible` is not Qt Quick `Item.visible`. Keep the Loader alive and change `contentAvailable` or `{ enabled: false }`; the Host animates layout width and opacity when semantic visibility changes.
 
@@ -87,19 +85,35 @@ The Host asks the registry for the current presentation's `viewOptions` and assi
 | `patchState({...})` | Request a shallow patch to this Widget's stored state |
 | `requestAccess({...})` | Choose a navigation target dynamically at runtime |
 
-Registry edges and `requestAccess()` use the internal normalized access shape, without `request: "access"`:
+Registry edges and `requestAccess()` use the internal access shape directly; there is no public event discriminator for navigation:
 
 ```qml
 root.requestAccess({
     navigation: "push",
     widgetId: targetId,
-    presentation: "peek"
+    presentation: "peek",
+    context: {
+        customValue: 42
+    }
 })
 ```
 
 Use `activated()` when the target is fixed in the definition. Use `requestAccess()` only when the Widget itself must choose the target from runtime data.
 
-`actionRequested()` exists at the low-level Widget/Host boundary, but current presentation renderers do not route it to the Controller. Add an explicit consumer before using it as a feature API.
+Internal access requests use these canonical fields:
+
+| Field | Behavior |
+| --- | --- |
+| `navigation` | `push` by default; `replace` replaces the top frame; `back` pops one frame |
+| `widgetId` | Registered target id; required for `push` and `replace` |
+| `presentation` | `peek` by default; access targets may use `peek` or `expanded`, never `compact` |
+| `context` | Shallow-copied per-frame renderer/Widget data |
+| `width` / `widthHint` | Optional positive width hint copied to `context.widthHint` |
+| `height` / `heightHint` | Optional positive height hint copied to `context.heightHint` |
+
+The Controller assigns a fresh positive `accessId` and overwrites `context.accessId` and `context.widgetId`. Entering the first frame suspends the active Notification; popping the final frame resumes it with its remaining TTL. Access frames themselves do not expire automatically.
+
+Useful context keys are `title`, `message`, `backWhenWidgetUnavailable`, and `splitCompanion`. Keep presentation-independent domain state in `widgetState`, not in access context.
 
 ## `widgetDefinitionFor()` reference
 
@@ -107,7 +121,6 @@ A definition has this general shape:
 
 ```js
 return {
-    widgetId: "example",
     source: Qt.resolvedUrl("../content/widgets/ExampleWidget.qml"),
 
     activations: {
@@ -128,7 +141,7 @@ return {
 }
 ```
 
-The `switch` case is the lookup key. Keep the returned `widgetId` equal to it; the current helpers primarily consume `source`, `activations`, `presentations`, and `companions`.
+The `switch` case is the Widget id. A definition only needs `source`; add `activations`, `presentations`, or `companions` when that Widget uses them.
 
 Unknown ids return `null` and cannot be access targets.
 
@@ -155,7 +168,7 @@ readonly property var widgets: [
 ]
 ```
 
-A registered Widget omitted from this list is still available as an access target, companion, or external-event target.
+A registered Widget omitted from this list is still available as an internal access target or companion.
 
 ### `activations`: default navigation edges
 
@@ -173,7 +186,7 @@ activations: {
 
 | Edge | Result |
 | --- | --- |
-| No entry for the current presentation | Host emits its fallback `activated()` signal; normally nothing navigates |
+| No entry for the current presentation | Nothing navigates |
 | `{ navigation: "back" }` | Pop one access frame; at the final frame this returns to Compact |
 | `push` + same `widgetId` | Visit the same registered component in a new access frame/presentation |
 | `push` + another `widgetId` | Open another registered Widget and preserve the current frame below it |
@@ -237,7 +250,7 @@ presentations: {
 }
 ```
 
-These options only alter the component loaded into a Host. They do not create navigation; that requires an activation edge or an access event.
+These options only alter the component loaded into a Host. They do not create navigation; that requires an activation edge or the Widget's internal `requestAccess()` intent.
 
 Expanded context can override `title` and can additionally enable unavailable-back behavior with `context.backWhenWidgetUnavailable: true`. It cannot disable a registry `backWhenUnavailable: true` entry.
 
@@ -341,104 +354,16 @@ A bare global event is also accepted:
 
 This form has no token-level deduplication and is mainly useful for simple tests.
 
-Local Island/testing code can bypass the global variable:
-
-```qml
-eventBridge.accept({
-    request: "access",
-    widgetId: "musicTrack",
-    presentation: "peek"
-})
-```
-
-`accept()` takes the bare event, not the `{ token, event }` envelope.
+External events cannot directly enter, replace, pop, or clear the Widget access chain. Widget navigation stays inside Registry activation edges and Widget-originated `requestAccess()` intents. While a Widget access is active, Notifications wait without replacing the current Peek/Expanded renderer. A Widget state patch can still make the current Widget unavailable; if its presentation declares `backWhenUnavailable`, the renderer then closes that invalid frame through the normal availability rule.
 
 ### Request paths
 
 | `request` | Purpose | Required identifier |
 | --- | --- | --- |
-| `"access"` | Push, replace, or pop a Peek/Expanded Widget frame | Registered `widgetId`, except for `back` |
-| `"widget"` | Patch/reset stored Widget state | Non-empty `widgetId` or `id` |
+| `"widget"` | Patch/reset stored Widget state | Non-empty `widgetId` |
 | `"notification"` | Queue a typed transient Notification | Non-empty `type`; register it to render |
-| `"clear"` | Clear access and transient Notification/root presentation state | None |
-| `"scene"` | Compatibility path and internal Notification-overflow presentation | Depends on variant |
 
-Public Bridge events include `request`. Internal `accessRequested()` and `sceneRequested()` signals do not, because their signal already selects the request path.
-
-## `request: "access"`
-
-Canonical form:
-
-```js
-{
-    request: "access",
-    navigation: "push",
-    widgetId: "musicTrack",
-    presentation: "peek",
-    width: 320,
-    height: 180,
-    ttl: 2000,
-    context: {
-        customValue: 42
-    }
-}
-```
-
-| Field | Aliases / precedence | Default and behavior |
-| --- | --- | --- |
-| `navigation` | — | `"push"`; valid: `push`, `replace`, `back` |
-| `widgetId` | `context.widgetId`, then legacy `context.exclusiveWidgetId` | Required unless navigation is `back`; must be registered |
-| `presentation` | `mode` | `"peek"`; valid access target: `peek` or `expanded` |
-| `context` | `payload` when `context` is absent | Shallow-copied custom frame data |
-| `width` | `widthHint`, then `context.widthHint` | Positive finite renderer hint copied to context |
-| `height` | `heightHint`, then `context.heightHint` | Positive finite renderer hint copied to context |
-| `ttl` | — | Positive milliseconds, floored; `0`/invalid means no lease |
-| `notificationPolicy` | — | Ignored with a warning; Widget access always suppresses Notifications |
-
-Navigation behavior:
-
-- `push`: append a frame.
-- `replace`: replace the top frame; when called from Compact, create the first frame.
-- `back`: pop exactly one frame. Other access fields are unnecessary.
-
-Minimal back event:
-
-```js
-{ request: "access", navigation: "back" }
-```
-
-Open Expanded directly:
-
-```js
-{
-    request: "access",
-    widgetId: "musicControls",
-    presentation: "expanded"
-}
-```
-
-Each accepted target receives a new positive `accessId`. The Controller overwrites these reserved context keys:
-
-```js
-context.accessKind = "widget"
-context.accessId = generatedAccessId
-context.widgetId = canonicalWidgetId
-context.exclusiveWidgetId = canonicalWidgetId
-```
-
-Useful renderer context keys include:
-
-| Key | Used by |
-| --- | --- |
-| `widthHint`, `heightHint` | Expanded geometry; retained in context for other renderers |
-| `title` | Expanded header override |
-| `message` | Expanded unavailable fallback text |
-| `backWhenWidgetUnavailable` | Expanded automatic back override |
-| `backOnWidgetActivation` | Expanded fallback activation when the definition has no Expanded edge |
-| `splitCompanion` | Per-frame Peek companion override |
-| `compactRadiusDip` | Peek split planning override |
-
-Entering the first access frame pauses the active Notification and its remaining TTL. Nested frames keep Notifications suppressed. Popping the final frame resumes the paused Notification, then the queued Notifications.
+These are semantic inputs, not presentation commands. The Bridge does not expose push, replace, back, Peek, Expanded, root-scene replacement, or Controller reset. Unknown request paths are rejected with a warning.
 
 ## `request: "widget"`
 
@@ -456,23 +381,17 @@ Patch state:
 }
 ```
 
-Accepted variants:
+`operation` defaults to `"patch"`. Use `"reset"` to remove the whole stored entry:
 
 ```js
-// operation defaults to patch
-{
-    request: "widget",
-    id: "musicTrack",
-    payload: { enabled: true }
-}
-
-// remove the whole stored entry
 {
     request: "widget",
     widgetId: "musicTrack",
     operation: "reset"
 }
 ```
+
+`widgetId` and `patch` are canonical fields; the Bridge does not accept `id` or `payload` aliases for Widget state.
 
 Patches are shallow merges:
 
@@ -482,7 +401,7 @@ nextState[widgetId] = { ...previousState, ...patch }
 
 All active instances with the same `widgetId` receive the updated state. `{ enabled: false }` hides them through `widgetVisible`. `reset` restores the Widget's default empty state.
 
-The state path validates only a non-empty id; it does not require the id to be currently registered. Widget state survives `request: "clear"`.
+The state path validates only a non-empty id; it does not require the id to be currently registered. State remains in the Controller until that id is reset or the Controller is recreated.
 
 ## `request: "notification"`
 
@@ -508,84 +427,25 @@ Notification requests ignore `presentation`, `mode`, width/height aliases, `navi
 
 An unregistered non-empty type is accepted into the transient queue but has no visual source, so always add its `notificationSourceFor()` mapping.
 
-At the root, a Notification is split beside the Compact Widget list when it fits `compactMaximumWidth`. If it does not fit, the root temporarily uses Peek presentation with the same Compact Widget list. This Notification-overflow Peek is not a Widget access frame.
+At the root, a Notification is split beside the Compact Widget list when the **combined** layout fits `compactMaximumWidth`. Otherwise the root temporarily promotes the same Widget list and Notification to Peek. This Notification-overflow Peek is not a Widget access frame and cannot disturb the Widget access chain.
+
+`compactMaximumWidth` is only the Compact-versus-Peek decision threshold for that combined layout. It does not cap the Widget list by itself:
+
+- Without a Notification, Compact follows the Widgets' natural width even when it exceeds the threshold.
+- The bar reservation follows that actual Compact width.
+- Peek and Expanded use the window's physical `maximumWidth`, not `compactMaximumWidth`.
+- If the Widget list already exceeds the threshold, the next Notification promotes to Peek.
 
 During Widget access, new Notifications queue FIFO and the active Notification remains suspended.
 
 ### Adding a Notification type
 
 1. Create a component under `island/content/notifications/` with `property var notificationData`.
-2. Expose `minimumWidthHint`, `preferredWidthHint`, `preferredHeightHint`, `preferredSideHint`, `animationHint`, and `interactive` as needed.
+2. Expose `minimumWidthHint`, `preferredWidthHint`, `preferredHeightHint`, `preferredSideHint`, and `animationHint` as needed.
 3. Map the semantic type in `notificationSourceFor()`.
 4. Publish a `request: "notification"` event from the feature that detected the change.
 
 The component reads its data from `notificationData.payload`.
-
-## `request: "clear"`
-
-Canonical form:
-
-```js
-{ request: "clear" }
-```
-
-Legacy form:
-
-```js
-{ action: "clear" }
-```
-
-The legacy form is recognized only when `request` is absent.
-
-Clear removes the access chain, active/queued/suspended Notifications, scene leases, and the temporary root presentation. It returns to Compact. Stored Widget state is retained.
-
-## `request: "scene"` compatibility variants
-
-Prefer `request: "access"` for feature menus. Scene remains for older callers and the internal Notification-overflow transition.
-
-### Scene with a Widget target
-
-Any of these target locations converts the Scene request into Widget access:
-
-```js
-{ request: "scene", widgetId: "musicTrack", presentation: "peek" }
-
-{
-    request: "scene",
-    context: { widgetId: "musicTrack" },
-    mode: "peek"
-}
-
-{
-    request: "scene",
-    payload: { exclusiveWidgetId: "musicTrack" },
-    presentation: "peek"
-}
-```
-
-Scene uses the same `mode`, context/payload, Widget-id, width/height, and TTL aliases as Access. Its default navigation is `replace`, not Access's `push`.
-
-### Scene without a Widget target
-
-Only these root presentations are accepted:
-
-- Compact root.
-- Peek with `context.presentationRole: "notificationOverflow"`.
-
-The overflow renderer uses this normalized local request:
-
-```qml
-root.sceneRequested({
-    presentation: "peek",
-    context: {
-        presentationRole: "notificationOverflow",
-        widgets: root.widgets.slice()
-    },
-    notificationPolicy: "keep"
-})
-```
-
-Other root Peek/Expanded requests are rejected. Root presentation is replaced rather than pushed, and it keeps Notification delivery. Feature code normally never needs this variant.
 
 ## Rendering and lifecycle constraints
 
@@ -593,5 +453,5 @@ Other root Peek/Expanded requests are rejected. Root presentation is replaced ra
 - When a renderer should auto-back, Loader Error and stable semantic unavailability are rechecked against the current `accessId`, so an old callback cannot pop a newer frame.
 - Peek keeps its background back action active for the whole Widget access, including Loading/Error states.
 - A presentation viewport must not bind its own `visible` to a child Host's `visible`. Qt propagates parent visibility into children and that creates a closed dependency. Drive the viewport from its transition opacity.
-- Widget component size fields are hints used by the presentation layout. Public access `width`/`height` become context hints; Expanded currently consumes them directly, while Peek composes width from Widget and split hints.
+- Widget component size fields are hints used by the presentation layout. Internal access `width`/`height` become context hints; Expanded currently consumes them directly, while Peek composes width from Widget and split hints.
 - Compact is always the root list. Returning to Compact means popping the final access frame, not pushing a Compact frame.

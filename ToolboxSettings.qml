@@ -146,8 +146,8 @@ PluginSettings {
     SliderSetting {
         settingKey: "islandCompactMaxWidth"
 
-        label: "Island Compact Max Width"
-        description: "Maximum width compact content may request"
+        label: "Compact Notification Max Width"
+        description: "Promote Widgets + Notification to Peek when their combined width exceeds this value; Widgets alone are not capped"
 
         defaultValue: 360
 

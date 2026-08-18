@@ -8,11 +8,6 @@ QtObject {
     readonly property real maximumPercentage: 0.99
     readonly property real minimumPieceEpsilon: 0.001
 
-    function finitePositive(value, fallback) {
-        const number = Number(value)
-        return Number.isFinite(number) && number > 0 ? number : fallback
-    }
-
     function normalizeSide(side) {
         return String(side) === "left" ? "left" : "right"
     }

@@ -14,9 +14,7 @@ Item {
     property bool scaleWithVisibility: true
     property int visibilityAnimationDuration: 220
 
-    signal activated()
     signal statePatchRequested(var patch)
-    signal actionRequested(string action, var payload)
     signal accessRequested(var request)
 
     readonly property url widgetSource: root.registry.widgetSourceFor(root.widgetId)
@@ -44,7 +42,6 @@ Item {
     readonly property real preferredHeightHint: root.widgetReady
         ? root.positiveDimension(widgetLoader.item?.preferredHeightHint ?? widgetLoader.item?.implicitHeight, 36)
         : 36
-    readonly property bool interactive: root.widgetReady && Boolean(widgetLoader.item?.interactive ?? false)
 
     property real visibilityProgress: 0.0
     readonly property real layoutWidth: root.preferredWidthHint * root.visibilityProgress
@@ -105,10 +102,7 @@ Item {
         const request = root.registry.activationRequestFor(root.widgetId, root.presentation)
         if (request) {
             root.accessRequested(request)
-            return
         }
-
-        root.activated()
     }
 
     function reconcileVisibility() {
@@ -171,10 +165,6 @@ Item {
 
         function onStatePatchRequested(patch) {
             root.statePatchRequested(patch)
-        }
-
-        function onActionRequested(action, payload) {
-            root.actionRequested(action, payload)
         }
 
         function onAccessRequested(request) {

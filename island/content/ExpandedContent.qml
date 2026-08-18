@@ -9,25 +9,17 @@ import "components" as Content
 Item {
     id: root
 
-    property var notificationData: null
     property var sceneContext: ({})
     property var widgetStates: ({})
-    property var islandContext: null
 
     signal accessRequested(var request)
-    signal sceneRequested(var request)
     signal widgetStatePatchRequested(string widgetId, var patch)
-    signal notificationDismissRequested()
     signal dismissRequested()
-    signal clearRequested()
 
-    readonly property string widgetId: String(root.sceneContext?.widgetId ?? root.sceneContext?.exclusiveWidgetId ?? "")
+    readonly property string widgetId: String(root.sceneContext?.widgetId ?? "")
     readonly property var presentationSpec: registry.presentationSpecFor(root.widgetId, "expanded")
     readonly property bool hasWidget: expandedWidgetHost.widgetReady && expandedWidgetHost.widgetVisible
-    readonly property bool widgetUnavailable:
-        expandedWidgetHost.widgetLoadFailed
-        || (expandedWidgetHost.widgetReady && !expandedWidgetHost.widgetVisible)
-    readonly property bool backOnWidgetActivation: root.sceneContext?.backOnWidgetActivation === true
+    readonly property bool widgetUnavailable: expandedWidgetHost.widgetLoadFailed || (expandedWidgetHost.widgetReady && !expandedWidgetHost.widgetVisible)
     readonly property bool backWhenWidgetUnavailable: root.sceneContext?.backWhenWidgetUnavailable === true || root.presentationSpec.backWhenUnavailable === true
     readonly property string title: String(root.sceneContext?.title ?? root.presentationSpec.title ?? "Dynamic Island")
 
@@ -78,11 +70,6 @@ Item {
 
         root._backPending = true
         root.accessRequested({ navigation: "back" })
-    }
-
-    function handleUnhandledWidgetActivation() {
-        if (root.backOnWidgetActivation)
-            root.requestBack()
     }
 
     function scheduleUnavailableBack() {
@@ -175,7 +162,6 @@ Item {
             widgetState: root.widgetStateFor(root.widgetId)
             scaleWithVisibility: false
 
-            onActivated: root.handleUnhandledWidgetActivation()
             onStatePatchRequested: function(patch) {
                 root.widgetStatePatchRequested(root.widgetId, patch)
             }

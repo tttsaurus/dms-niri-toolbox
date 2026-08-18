@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell.Io
 
 Item {
     id: root
@@ -24,58 +23,6 @@ Item {
         return value && typeof value === "object" ? Object.assign({}, value) : ({})
     }
 
-    function parseSceneRequest(event) {
-        const context = root.objectCopy(event.context ?? event.payload)
-        const widgetId = String(event.widgetId ?? context.widgetId ?? context.exclusiveWidgetId ?? "").trim()
-
-        const width = root.positiveFinite(event.width ?? event.widthHint ?? context.widthHint, 0)
-        const height = root.positiveFinite(event.height ?? event.heightHint ?? context.heightHint, 0)
-
-        if (width > 0)
-            context.widthHint = width
-        if (height > 0)
-            context.heightHint = height
-
-        const ttl = root.positiveFinite(event.ttl, 0)
-
-        return {
-            navigation: String(event.navigation ?? "replace"),
-            presentation: String(event.presentation ?? event.mode ?? "peek"),
-            widgetId: widgetId,
-            context: context,
-            notificationPolicy: String(event.notificationPolicy ?? ""),
-            ttl: ttl > 0 ? Math.floor(ttl) : 0
-        }
-    }
-
-    function parseAccessRequest(event) {
-        const navigation = String(event.navigation ?? "push")
-        if (navigation === "back")
-            return { navigation: "back" }
-
-        const parsed = root.parseSceneRequest(event)
-        if (parsed.widgetId.length === 0) {
-            console.warn("[IslandEventBridge] access request requires widgetId")
-            return null
-        }
-
-        if (parsed.presentation === "compact") {
-            console.warn("[IslandEventBridge] Compact is the root Widget list, not an access target")
-            return null
-        }
-
-        if (event.notificationPolicy != null)
-            console.warn("[IslandEventBridge] Widget access always suppresses Notifications")
-
-        return {
-            navigation: navigation,
-            widgetId: parsed.widgetId,
-            presentation: parsed.presentation,
-            context: parsed.context,
-            ttl: parsed.ttl
-        }
-    }
-
     function parseNotificationRequest(event) {
         const type = String(event.type ?? "").trim()
 
@@ -93,7 +40,7 @@ Item {
                 || event.navigation != null
                 || event.notificationPolicy != null) {
 
-            console.warn("[IslandEventBridge] notification request ignores scene presentation/geometry fields")
+            console.warn("[IslandEventBridge] notification request ignores presentation, geometry, and navigation fields")
         }
 
         const ttl = root.positiveFinite(event.ttl, 3000)
@@ -106,7 +53,7 @@ Item {
     }
 
     function parseWidgetRequest(event) {
-        const widgetId = String(event.widgetId ?? event.id ?? "").trim()
+        const widgetId = String(event.widgetId ?? "").trim()
 
         if (widgetId.length === 0) {
             console.warn("[IslandEventBridge] widget request requires widgetId")
@@ -122,7 +69,7 @@ Item {
         return {
             widgetId: widgetId,
             operation: operation,
-            patch: operation === "patch" ? root.objectCopy(event.patch ?? event.payload) : ({})
+            patch: operation === "patch" ? root.objectCopy(event.patch) : ({})
         }
     }
 
@@ -130,24 +77,9 @@ Item {
         if (!event)
             return
 
-        if (event.action === "clear" && event.request == null) {
-            root.requestReceived("clear", {})
-            return
-        }
-
         const requestType = String(event.request ?? "").trim()
 
         switch (requestType) {
-            case "access": {
-                const accessRequest = root.parseAccessRequest(event)
-                if (accessRequest)
-                    root.requestReceived("access", accessRequest)
-                return
-            }
-            case "scene": {
-                root.requestReceived("scene", root.parseSceneRequest(event))
-                return
-            }
             case "notification": {
                 const notification = root.parseNotificationRequest(event)
                 if (notification)
@@ -160,17 +92,9 @@ Item {
                     root.requestReceived("widget", widgetRequest)
                 return
             }
-            case "clear":
-                root.requestReceived("clear", {})
-                return
             default:
                 console.warn("[IslandEventBridge] unknown or missing request path: ", requestType)
         }
-    }
-
-    // permanent ingress contract
-    function accept(event) {
-        root.dispatch(event)
     }
 
     function consumeGlobalEvent() {

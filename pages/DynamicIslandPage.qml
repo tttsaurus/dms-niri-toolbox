@@ -81,8 +81,8 @@ Item {
                 toolboxRoot: root.toolboxRoot
                 settingKey: "islandCompactMaxWidth"
 
-                text: "Island Compact Max Width"
-                description: "Maximum width compact content may request"
+                text: "Compact Notification Max Width"
+                description: "Promote Widgets + Notification to Peek when their combined width exceeds this value; Widgets alone are not capped"
 
                 value: root.toolboxRoot ? root.toolboxRoot.islandCompactMaxWidth : 360
 

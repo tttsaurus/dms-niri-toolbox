@@ -7,16 +7,12 @@ Item {
     id: root
 
     property var notificationData: null
-    property var sceneContext: ({})
     property var widgetStates: ({})
     property var islandContext: null
 
     signal accessRequested(var request)
     signal sceneRequested(var request)
     signal widgetStatePatchRequested(string widgetId, var patch)
-    signal notificationDismissRequested()
-    signal dismissRequested()
-    signal clearRequested()
 
     readonly property var widgets: [
         "clock",
@@ -30,14 +26,10 @@ Item {
     readonly property real compactMaximumWidth: Math.max(root.idleWidth, Number(root.islandContext?.compactMaximumWidth ?? root.idleWidth))
     readonly property real radiusDip: Math.max(Number(root.islandContext?.radiusDip ?? 18), 0)
     readonly property real shapeInset: Math.max(Number(root.islandContext?.shapeInset ?? 5), 0)
-    readonly property bool ownsNotificationSlot: String(root.sceneContext?.accessKind ?? "") !== "widget"
 
-    readonly property url notificationSource: root.ownsNotificationSlot
-        ? registry.notificationSourceFor(root.notificationData)
-        : ""
+    readonly property url notificationSource: registry.notificationSourceFor(root.notificationData)
     readonly property bool notificationReady:
-        root.ownsNotificationSlot
-        && root.notificationData !== null
+        root.notificationData !== null
         && String(root.notificationSource).length > 0
         && String(root._displayNotificationSource) === String(root.notificationSource)
         && notificationLoader.status === Loader.Ready
@@ -50,7 +42,7 @@ Item {
     readonly property real liveRadiusDip: Math.max(Number(root.islandContext?.liveRadiusDip ?? root.radiusDip), 0)
     readonly property real liveSplitPercentage: Math.max(0.01, Math.min(0.99, Number(root.islandContext?.liveSplitPercentage ?? root.splitPercentage)))
 
-    readonly property real baseIslandWidth: Math.min(root.compactMaximumWidth, Math.max(root.idleWidth, root.baseNaturalWidth + root.contentPadding * 2))
+    readonly property real baseIslandWidth: Math.max(root.idleWidth, root.baseNaturalWidth + root.contentPadding * 2)
     readonly property var compactSplitPlan: root.notificationReady
         ? splitGeometry.findPlanForPiece(
             root.baseIslandWidth,
@@ -115,8 +107,7 @@ Item {
                 presentationRole: "notificationOverflow",
                 compactRadiusDip: root.radiusDip,
                 widgets: root.widgets.slice()
-            },
-            notificationPolicy: "keep"
+            }
         })
     }
 
@@ -168,7 +159,7 @@ Item {
         source: root._displayNotificationSource
         asynchronous: false
         visible: opacity > 0.001
-        opacity: root.ownsNotificationSlot && root._displayNotificationData && (root.notificationReady || root.notificationData === null)
+        opacity: root._displayNotificationData && (root.notificationReady || root.notificationData === null)
             ? root.splitProgress
             : 0.0
         x: root.liveLayout.pieceContentStartOffset
@@ -197,11 +188,6 @@ Item {
         } else if (root.splitProgress <= 0.001) {
             root.clearRetainedNotification()
         }
-    }
-
-    onOwnsNotificationSlotChanged: {
-        if (!root.ownsNotificationSlot)
-            root.clearRetainedNotification()
     }
 
     onCompactSplitPlanChanged: Qt.callLater(root.reconcileNotificationPresentation)

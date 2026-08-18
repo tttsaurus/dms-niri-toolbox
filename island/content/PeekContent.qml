@@ -14,9 +14,6 @@ Item {
     signal accessRequested(var request)
     signal sceneRequested(var request)
     signal widgetStatePatchRequested(string widgetId, var patch)
-    signal notificationDismissRequested()
-    signal dismissRequested()
-    signal clearRequested()
 
     readonly property real piecePadding: 7
     readonly property real contentPadding: 10
@@ -29,8 +26,8 @@ Item {
     readonly property real shapeInset: Math.max(Number(root.islandContext?.shapeInset ?? 5), 0)
 
     readonly property string presentationRole: String(root.sceneContext?.presentationRole ?? "")
-    readonly property string primaryWidgetId: String(root.sceneContext?.widgetId ?? root.sceneContext?.exclusiveWidgetId ?? "")
-    readonly property bool widgetAccessActive: String(root.sceneContext?.accessKind ?? "") === "widget" && root.primaryWidgetId.length > 0
+    readonly property string primaryWidgetId: String(root.sceneContext?.widgetId ?? "")
+    readonly property bool widgetAccessActive: root.primaryWidgetId.length > 0
     readonly property bool ownsNotificationSlot: !root.widgetAccessActive
     readonly property var overflowWidgets: !root.widgetAccessActive && Array.isArray(root.sceneContext?.widgets)
         ? root.sceneContext.widgets
@@ -257,8 +254,7 @@ Item {
             if (root.presentationRole === "notificationOverflow" && root.compactCandidatePlan.success) {
                 root.sceneRequested({
                     presentation: "compact",
-                    context: {},
-                    notificationPolicy: "keep"
+                    context: {}
                 })
             }
             return
@@ -270,8 +266,7 @@ Item {
 
             root.sceneRequested({
                 presentation: "compact",
-                context: {},
-                notificationPolicy: "keep"
+                context: {}
             })
         }
     }

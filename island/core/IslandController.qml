@@ -8,29 +8,20 @@ Item {
     height: 0
 
     readonly property int accessDepth: root._accessChain.length
-    readonly property var accessChain: root._accessChain
     readonly property var currentAccess: root.accessDepth > 0 ? root._accessChain[root.accessDepth - 1] : null
     readonly property var sceneState: root.currentAccess ?? root._rootScene
     readonly property string mode: String(root.sceneState?.presentation ?? "compact")
     readonly property var sceneContext: root.sceneState?.context ?? ({})
 
     readonly property var currentNotification: root._currentNotification
-    readonly property int queuedNotificationCount: root._notificationQueue.length
-    readonly property bool notificationsSuspended: root._notificationsSuspended
     readonly property var widgetStates: root._widgetStates
 
-    readonly property int sceneHistoryDepth: root.accessDepth
-
     property var _rootScene: ({
-        kind: "root",
         presentation: "compact",
         context: ({})
     })
     property var _accessChain: []
     property int _nextAccessId: 0
-
-    property string _sceneLeaseKind: ""
-    property int _sceneLeaseAccessId: 0
 
     property var _currentNotification: null
     property var _notificationQueue: []
@@ -50,13 +41,6 @@ Item {
 
         repeat: false
         onTriggered: root.finishCurrentNotification()
-    }
-
-    Timer {
-        id: sceneTimer
-
-        repeat: false
-        onTriggered: root.finishSceneLease()
     }
 
     function normalizedPresentation(value, fallback) {
@@ -170,10 +154,6 @@ Item {
         root.playNextNotification()
     }
 
-    function dismissCurrentNotification() {
-        root.finishCurrentNotification()
-    }
-
     function suspendNotifications() {
         if (root._notificationsSuspended)
             return
@@ -211,41 +191,8 @@ Item {
         root.playNextNotification()
     }
 
-    function clearNotifications() {
-        notificationTimer.stop()
-        root._currentNotification = null
-        root._notificationQueue = []
-        root._suspendedNotification = null
-        root._suspendedRemainingTtl = 0
-        root._notificationsSuspended = false
-        root._notificationDeadline = 0
-    }
-
-    function stopSceneLease() {
-        sceneTimer.stop()
-        root._sceneLeaseKind = ""
-        root._sceneLeaseAccessId = 0
-    }
-
-    function startSceneLease(ttlValue, kind, accessId) {
-        root.stopSceneLease()
-
-        const ttl = Number(ttlValue ?? 0)
-        if (!Number.isFinite(ttl) || ttl <= 0)
-            return
-
-        root._sceneLeaseKind = String(kind ?? "")
-        root._sceneLeaseAccessId = Number(accessId ?? 0)
-        sceneTimer.interval = Math.max(1, Math.floor(ttl))
-        sceneTimer.start()
-    }
-
-    function targetWidgetIdFor(request) {
-        return String(request?.widgetId ?? request?.context?.widgetId ?? request?.context?.exclusiveWidgetId ?? "").trim()
-    }
-
     function createAccessFrame(request) {
-        const widgetId = root.targetWidgetIdFor(request)
+        const widgetId = String(request?.widgetId ?? "").trim()
         if (widgetId.length === 0) {
             console.warn("[IslandController] Widget access requires widgetId")
             return null
@@ -256,7 +203,7 @@ Item {
             return null
         }
 
-        const presentation = root.normalizedPresentation(request?.presentation ?? request?.mode, "peek")
+        const presentation = root.normalizedPresentation(request?.presentation, "peek")
         if (presentation === "compact") {
             console.warn("[IslandController] Compact is the root Widget list and cannot be an access node")
             return null
@@ -264,7 +211,6 @@ Item {
 
         const accessId = ++root._nextAccessId
         const context = root.objectCopy(request?.context)
-        context.accessKind = "widget"
         context.accessId = accessId
         context.widgetId = widgetId
 
@@ -275,10 +221,7 @@ Item {
         if (Number.isFinite(heightHint) && heightHint > 0)
             context.heightHint = heightHint
 
-        context.exclusiveWidgetId = widgetId
-
         return {
-            kind: "widget",
             accessId: accessId,
             widgetId: widgetId,
             presentation: presentation,
@@ -299,8 +242,6 @@ Item {
         if (!frame)
             return
 
-        root.stopSceneLease()
-
         const chain = root._accessChain.slice()
         const enteringAccess = chain.length === 0
 
@@ -313,15 +254,10 @@ Item {
             root.suspendNotifications()
 
         root._accessChain = chain
-
-        if (root.currentAccess && Number(root.currentAccess.accessId) === frame.accessId)
-            root.startSceneLease(normalizedRequest.ttl, "access", frame.accessId)
     }
 
     function resetRootPresentation() {
-        root.stopSceneLease()
         root._rootScene = {
-            kind: "root",
             presentation: "compact",
             context: ({})
         }
@@ -334,24 +270,16 @@ Item {
 
     function requestRootPresentation(request) {
         const normalizedRequest = root.objectCopy(request)
-        const navigation = root.normalizedNavigation(normalizedRequest.navigation, "replace")
-
-        if (navigation === "back") {
-            root.navigateBack()
-            return
-        }
 
         if (root.accessDepth > 0) {
             console.warn("[IslandController] root presentation cannot replace an active Widget access")
             return
         }
 
-        const presentation = root.normalizedPresentation(normalizedRequest.presentation ?? normalizedRequest.mode, "compact")
+        const presentation = root.normalizedPresentation(normalizedRequest.presentation, "compact")
         const context = root.objectCopy(normalizedRequest.context)
-        delete context.accessKind
         delete context.accessId
         delete context.widgetId
-        delete context.exclusiveWidgetId
         const role = String(context.presentationRole ?? "")
 
         if (presentation !== "compact" && !(presentation === "peek" && role === "notificationOverflow")) {
@@ -359,15 +287,7 @@ Item {
             return
         }
 
-        if (navigation === "push")
-            console.warn("[IslandController] root presentation is replaced, never pushed onto Widget access")
-
-        if (String(normalizedRequest.notificationPolicy ?? "").length > 0 && String(normalizedRequest.notificationPolicy) !== "keep")
-            console.warn("[IslandController] root presentation keeps Notification delivery")
-
-        root.stopSceneLease()
         root._rootScene = {
-            kind: "root",
             presentation: presentation,
             context: presentation === "compact" ? ({}) : context
         }
@@ -376,30 +296,9 @@ Item {
             root.resumeNotifications()
         else
             root.playNextNotification()
-
-        root.startSceneLease(normalizedRequest.ttl, "root", 0)
-    }
-
-    function requestScene(request, legacyContext) {
-        const normalizedRequest = typeof request === "string" ? { presentation: request, context: legacyContext ?? ({}) } : root.objectCopy(request)
-        const navigation = root.normalizedNavigation(normalizedRequest.navigation, "replace")
-
-        if (navigation === "back") {
-            root.navigateBack()
-            return
-        }
-
-        if (root.targetWidgetIdFor(normalizedRequest).length > 0) {
-            root.requestAccess(normalizedRequest)
-            return
-        }
-
-        root.requestRootPresentation(normalizedRequest)
     }
 
     function navigateBack() {
-        root.stopSceneLease()
-
         if (root._accessChain.length === 0) {
             if (root.mode !== "compact")
                 root.resetRootPresentation()
@@ -425,28 +324,6 @@ Item {
         }
 
         root.resetRootPresentation()
-    }
-
-    function finishSceneLease() {
-        const leaseKind = root._sceneLeaseKind
-        const leasedAccessId = root._sceneLeaseAccessId
-        root.stopSceneLease()
-
-        if (leaseKind === "access"
-                && root.currentAccess
-                && Number(root.currentAccess.accessId) === leasedAccessId) {
-
-            root.navigateBack()
-            return
-        }
-
-        if (leaseKind === "root" && root.accessDepth === 0)
-            root.resetRootPresentation()
-    }
-
-    function widgetStateFor(widgetId) {
-        const id = String(widgetId ?? "")
-        return id.length > 0 ? (root._widgetStates[id] ?? ({})) : ({})
     }
 
     function patchWidgetState(widgetId, patch) {
@@ -488,34 +365,14 @@ Item {
 
     function acceptRequest(requestType, request) {
         switch (String(requestType ?? "")) {
-            case "access":
-                root.requestAccess(request)
-                return
-            case "scene":
-                root.requestScene(request)
-                return
             case "notification":
                 root.pushNotification(request)
                 return
             case "widget":
                 root.applyWidgetRequest(request)
                 return
-            case "clear":
-                root.clear()
-                return
             default:
                 console.warn("[IslandController] unsupported Bridge request: ", requestType)
         }
-    }
-
-    function clear() {
-        root.stopSceneLease()
-        root.clearNotifications()
-        root._rootScene = {
-            kind: "root",
-            presentation: "compact",
-            context: ({})
-        }
-        root._accessChain = []
     }
 }

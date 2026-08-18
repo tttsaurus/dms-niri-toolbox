@@ -14,7 +14,6 @@ Core.IslandWidget {
     minimumWidthHint: Math.max(1, clockRow.implicitWidth)
     preferredWidthHint: root.minimumWidthHint
     preferredHeightHint: 36
-    interactive: false
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
