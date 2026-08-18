@@ -55,6 +55,25 @@ Item {
         )
     }
 
+    function parseJavaMajorVersion(text) {
+        const input = String(text ?? "");
+
+        const versionMatch = input.match(/\bversion\s+"([^"]+)"/i);
+        if (!versionMatch)
+            return -1;
+
+        const numberMatch = versionMatch[1].match(/^(\d+)(?:\.(\d+))?/);
+        if (!numberMatch)
+            return -1;
+
+        const first = parseInt(numberMatch[1], 10);
+
+        if (first === 1 && numberMatch[2] !== undefined)
+            return parseInt(numberMatch[2], 10);
+
+        return first;
+    }
+
     function parseJavaInstallations(output) {
         let options = [];
         let pathMap = {};
@@ -159,8 +178,7 @@ Item {
                 type: "javaVersionSwitch",
                 ttl: 3200,
                 payload: {
-                    label: javaDropdown.currentValue || "Java",
-                    javaPath: root.selectedJavaPath
+                    label: parseJavaMajorVersion(javaDropdown.currentValue)
                 }
             });
         }

@@ -411,8 +411,7 @@ The state path validates only a non-empty id; it does not require the id to be c
     type: "javaVersionSwitch",
     ttl: 3200,
     payload: {
-        label: "Java 21",
-        javaPath: "/usr/lib/jvm/java-21"
+        label: "Java 21"
     }
 }
 ```

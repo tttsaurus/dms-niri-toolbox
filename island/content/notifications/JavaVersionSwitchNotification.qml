@@ -10,7 +10,7 @@ Item {
 
     readonly property string displayLabel: String(root.notificationData?.payload?.label ?? "Java")
 
-    readonly property real minimumWidthHint: 132
+    readonly property real minimumWidthHint: 50
     readonly property real preferredWidthHint: {
         const natural = icon.width + Theme.spacingS + labelText.implicitWidth + Theme.spacingM * 2
         return Math.max(root.minimumWidthHint, natural)
