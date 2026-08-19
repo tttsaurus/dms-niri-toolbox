@@ -16,6 +16,8 @@ Item {
 
     property var activeContentLoader: null
     property var cleanupContentLoader: null
+    property var retainedCompactContentLoader: null
+    property bool suppressSceneOpacityAnimation: false
     readonly property var loadedContent: root.activeContentLoader?.item ?? null
 
     function saneDimension(value, fallback, maximum) {
@@ -134,6 +136,9 @@ Item {
         const incoming = root.activeContentLoader ? root.inactiveContentLoader() : sceneLoaderA
         incoming.opacity = 0.0
 
+        if (incoming === root.retainedCompactContentLoader && String(incoming.source) !== sourceText)
+            root.retainedCompactContentLoader = null
+
         if (String(incoming.source) === sourceText && incoming.status === Loader.Ready) {
             root.activateSceneLoader(incoming)
             return
@@ -149,6 +154,12 @@ Item {
             return
 
         const outgoing = root.activeContentLoader
+        const restoringRetainedCompact = incoming === root.retainedCompactContentLoader
+            && root.controller.mode === "compact"
+            && String(incoming.source) === String(registry.sceneSourceFor("compact"))
+
+        if (restoringRetainedCompact)
+            root.suppressSceneOpacityAnimation = true
 
         if (root.cleanupContentLoader === incoming) {
             sceneCleanupTimer.stop()
@@ -164,10 +175,16 @@ Item {
             if (root.shouldRetainOutgoingScene(outgoing, incoming)) {
                 sceneCleanupTimer.stop()
                 root.cleanupContentLoader = null
+                root.retainedCompactContentLoader = outgoing
             } else {
                 root.cleanupContentLoader = outgoing
                 sceneCleanupTimer.restart()
             }
+        }
+
+        if (restoringRetainedCompact) {
+            root.retainedCompactContentLoader = null
+            root.suppressSceneOpacityAnimation = false
         }
     }
 
@@ -300,6 +317,8 @@ Item {
         enabled: root.activeContentLoader === sceneLoaderA
 
         Behavior on opacity {
+            enabled: !root.suppressSceneOpacityAnimation
+
             NumberAnimation {
                 duration: 180
                 easing.type: Easing.OutCubic
@@ -326,6 +345,8 @@ Item {
         enabled: root.activeContentLoader === sceneLoaderB
 
         Behavior on opacity {
+            enabled: !root.suppressSceneOpacityAnimation
+
             NumberAnimation {
                 duration: 180
                 easing.type: Easing.OutCubic
