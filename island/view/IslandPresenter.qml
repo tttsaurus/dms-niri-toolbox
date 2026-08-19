@@ -18,6 +18,8 @@ Item {
     property var cleanupContentLoader: null
     property var retainedCompactContentLoader: null
     property bool suppressSceneOpacityAnimation: false
+    property int sceneTransitionDuration: 180
+    property int sceneTransitionCleanupSlack: 24
     readonly property var loadedContent: root.activeContentLoader?.item ?? null
 
     function saneDimension(value, fallback, maximum) {
@@ -94,8 +96,10 @@ Item {
     }
 
     function applyControllerScene() {
-        const mode = root.controller.mode
-        root.switchScene(registry.sceneSourceFor(mode))
+        const state = root.controller.sceneState ?? ({})
+        const mode = String(state.presentation ?? "compact")
+        const context = state.context ?? ({})
+        root.switchScene(registry.sceneSourceFor(mode), context)
     }
 
     function sceneLoaderForSource(source) {
@@ -125,22 +129,23 @@ Item {
         return null
     }
 
-    function sceneInitialProperties() {
+    function sceneInitialProperties(sceneContext) {
         return {
             notificationData: root.controller.currentNotification,
             notificationVisible: root.controller.notificationVisible,
             notificationRevision: root.controller.notificationRevision,
-            sceneContext: root.controller.sceneContext,
+            sceneContext: sceneContext ?? ({}),
             widgetStates: root.controller.widgetStates,
             islandContext: root.liveContentContext
         }
     }
 
     function shouldRetainOutgoingScene(outgoing, incoming) {
-        if (!outgoing || !incoming || root.controller.mode !== "peek")
+        const state = root.controller.sceneState ?? ({})
+        if (!outgoing || !incoming || String(state.presentation ?? "compact") !== "peek")
             return false
 
-        const role = String(root.controller.sceneContext?.presentationRole ?? "")
+        const role = String(state.context?.presentationRole ?? "")
         if (role !== "notificationOverflow")
             return false
 
@@ -148,13 +153,17 @@ Item {
             && String(incoming.source) === String(registry.sceneSourceFor("peek"))
     }
 
-    function switchScene(source) {
+    function switchScene(source, sceneContext) {
         const sourceText = String(source ?? "")
+        const context = sceneContext ?? ({})
         if (sourceText.length === 0)
             return
 
-        if (root.activeContentLoader && String(root.activeContentLoader.source) === sourceText)
+        if (root.activeContentLoader && String(root.activeContentLoader.source) === sourceText) {
+            if (root.activeContentLoader.item)
+                root.activeContentLoader.item.sceneContext = context
             return
+        }
 
         const incoming = root.activeContentLoader ? root.sceneLoaderForSource(sourceText) : sceneLoaderA
         if (!incoming) {
@@ -165,11 +174,13 @@ Item {
         incoming.opacity = 0.0
 
         if (String(incoming.source) === sourceText && incoming.status === Loader.Ready) {
+            if (incoming.item)
+                incoming.item.sceneContext = context
             root.activateSceneLoader(incoming)
             return
         }
 
-        incoming.setSource(source, root.sceneInitialProperties())
+        incoming.setSource(source, root.sceneInitialProperties(context))
         if (incoming.status === Loader.Ready)
             root.activateSceneLoader(incoming)
     }
@@ -180,7 +191,7 @@ Item {
 
         const outgoing = root.activeContentLoader
         const restoringRetainedCompact = incoming === root.retainedCompactContentLoader
-            && root.controller.mode === "compact"
+            && String(root.controller.sceneState?.presentation ?? "compact") === "compact"
             && String(incoming.source) === String(registry.sceneSourceFor("compact"))
 
         if (restoringRetainedCompact)
@@ -244,13 +255,6 @@ Item {
 
     Binding {
         target: sceneLoaderA.item
-        property: "sceneContext"
-        value: root.controller.sceneContext
-        when: sceneLoaderA.item !== null
-    }
-
-    Binding {
-        target: sceneLoaderA.item
         property: "widgetStates"
         value: root.controller.widgetStates
         when: sceneLoaderA.item !== null
@@ -286,13 +290,6 @@ Item {
 
     Binding {
         target: sceneLoaderB.item
-        property: "sceneContext"
-        value: root.controller.sceneContext
-        when: sceneLoaderB.item !== null
-    }
-
-    Binding {
-        target: sceneLoaderB.item
         property: "widgetStates"
         value: root.controller.widgetStates
         when: sceneLoaderB.item !== null
@@ -323,13 +320,6 @@ Item {
         target: sceneLoaderC.item
         property: "notificationRevision"
         value: root.controller.notificationRevision
-        when: sceneLoaderC.item !== null
-    }
-
-    Binding {
-        target: sceneLoaderC.item
-        property: "sceneContext"
-        value: root.controller.sceneContext
         when: sceneLoaderC.item !== null
     }
 
@@ -387,7 +377,7 @@ Item {
             enabled: !root.suppressSceneOpacityAnimation
 
             NumberAnimation {
-                duration: 180
+                duration: root.sceneTransitionDuration
                 easing.type: Easing.OutCubic
             }
         }
@@ -415,7 +405,7 @@ Item {
             enabled: !root.suppressSceneOpacityAnimation
 
             NumberAnimation {
-                duration: 180
+                duration: root.sceneTransitionDuration
                 easing.type: Easing.OutCubic
             }
         }
@@ -443,7 +433,7 @@ Item {
             enabled: !root.suppressSceneOpacityAnimation
 
             NumberAnimation {
-                duration: 180
+                duration: root.sceneTransitionDuration
                 easing.type: Easing.OutCubic
             }
         }
@@ -458,7 +448,7 @@ Item {
     Timer {
         id: sceneCleanupTimer
 
-        interval: 200
+        interval: root.sceneTransitionDuration + root.sceneTransitionCleanupSlack
         repeat: false
         onTriggered: {
             const loader = root.cleanupContentLoader

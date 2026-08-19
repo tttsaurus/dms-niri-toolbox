@@ -48,8 +48,8 @@ Item {
         && root.displayedAccessMatchesCurrent
         && (primaryWidgetHost.widgetLoadFailed || (primaryWidgetHost.widgetReady && !primaryWidgetHost.widgetVisible))
 
-    readonly property var splitCompanionSpec: root.widgetAccessActive 
-        ? (root.sceneContext?.splitCompanion ?? registry.companionFor(root.primaryWidgetId, "peek"))
+    readonly property var splitCompanionSpec: root.widgetAccessActive
+        ? (root._displaySceneContext?.splitCompanion ?? registry.companionFor(root._displayPrimaryWidgetId, "peek"))
         : null
     readonly property string splitCompanionWidgetId: String(root.splitCompanionSpec?.widgetId ?? "")
     readonly property bool splitCompanionReady:
@@ -70,6 +70,7 @@ Item {
     property int _availabilityEpoch: 0
     property int _displayAccessId: 0
     property string _displayPrimaryWidgetId: ""
+    property var _displaySceneContext: ({})
 
     Behavior on accessPresentationProgress {
         NumberAnimation {
@@ -121,7 +122,7 @@ Item {
             root.splitCompanionPadding
         )
         : splitGeometry.failedPlan("no focused companion", root.idleWidth)
-    readonly property string focusedSplitOwner: String(root.sceneContext?.accessId ?? "") + "|" + root.primaryWidgetId + "|" + root.splitCompanionWidgetId
+    readonly property string focusedSplitOwner: String(root._displayAccessId) + "|" + root._displayPrimaryWidgetId + "|" + root.splitCompanionWidgetId
     readonly property var focusedSplitPlan: root._displayFocusedSplitOwner === root.focusedSplitOwner && root._displayFocusedSplitPlan
         ? root._displayFocusedSplitPlan
         : splitGeometry.failedPlan("no retained focused split", root.idleWidth)
@@ -225,6 +226,7 @@ Item {
                         
                 root._displayAccessId = accessId
                 root._displayPrimaryWidgetId = root.primaryWidgetId
+                root._displaySceneContext = root.sceneContext ?? ({})
             }
             return
         }
@@ -232,6 +234,7 @@ Item {
         if (root.accessPresentationProgress <= 0.001) {
             root._displayAccessId = 0
             root._displayPrimaryWidgetId = ""
+            root._displaySceneContext = ({})
         }
     }
 
@@ -363,7 +366,7 @@ Item {
         visible: opacity > 0.001
         opacity: root.accessPresentationProgress * root.splitProgress
         scale: 0.86 + root.splitProgress * 0.14
-        enabled: root.splitCompanionReady && root.splitProgress > 0.9
+        enabled: root.displayedAccessMatchesCurrent && root.splitCompanionReady && root.splitProgress > 0.9
         z: 2
         x: root.liveLayout.pieceContentStartOffset
         y: 0
