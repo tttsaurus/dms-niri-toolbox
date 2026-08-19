@@ -9,9 +9,6 @@ Item {
 
     property bool splitEnabled: false
     property real splitPercentage: 0.5
-    property bool contentChangeAnimationEnabled: false
-    property int contentChangeRevision: 0
-    property string contentChangeAnimation: "subtle"
 
     property alias contentItem: contentLayer
 
@@ -59,10 +56,8 @@ Item {
 
     function applyGeometryProgress(value) {
         const progress = root.clamp(Number(value), 0, 1)
-        root.width = root._geometryStartWidth
-            + (root._geometryEndWidth - root._geometryStartWidth) * progress
-        root.height = root._geometryStartHeight
-            + (root._geometryEndHeight - root._geometryStartHeight) * progress
+        root.width = root._geometryStartWidth + (root._geometryEndWidth - root._geometryStartWidth) * progress
+        root.height = root._geometryStartHeight + (root._geometryEndHeight - root._geometryStartHeight) * progress
     }
 
     function snapGeometry(widthValue, heightValue) {
@@ -87,16 +82,11 @@ Item {
     function commitGeometry(animated) {
         const nextWidth = Number(root.targetWidth)
         const nextHeight = Number(root.targetHeight)
-        if (!Number.isFinite(nextWidth) || nextWidth <= 0
-                || !Number.isFinite(nextHeight) || nextHeight <= 0) return
+        if (!Number.isFinite(nextWidth) || nextWidth <= 0 || !Number.isFinite(nextHeight) || nextHeight <= 0) return
 
         geometryCommitTimer.stop()
 
-        // A coalesced scene update can resolve back to the endpoint already in
-        // flight. Keep that transaction running instead of stopping both axes
-        // at whatever intermediate frame happened to receive the update.
-        if (geometryAnimation.running
-                && root.geometryEndpointMatches(nextWidth, nextHeight)) return
+        if (geometryAnimation.running && root.geometryEndpointMatches(nextWidth, nextHeight)) return
 
         const currentWidth = root.width
         const currentHeight = root.height
@@ -226,21 +216,6 @@ Item {
         onFinished: root.finishGeometryCommit()
     }
 
-    onContentChangeRevisionChanged: {
-        if (root.contentChangeAnimationEnabled)
-            contentEnterAnimation.restart()
-    }
-
-    NumberAnimation {
-        id: contentEnterAnimation
-        target: contentLayer
-        property: "opacity"
-        from: root.contentChangeAnimation === "none" ? 1.0 : 0.88
-        to: 1.0
-        duration: 150
-        easing.type: Easing.OutCubic
-    }
-
     // keep a visible fallback until the local .qsb has been baked,
     // and also if the scene graph backend rejects the ShaderEffect for any reason
     Rectangle {
@@ -285,8 +260,6 @@ Item {
     Item {
         id: contentLayer
         anchors.fill: parent
-        opacity: 1.0
-        scale: 1.0
     }
 
     Component.onCompleted: {

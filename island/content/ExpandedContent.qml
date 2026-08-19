@@ -9,8 +9,13 @@ import "components" as Content
 Item {
     id: root
 
+    // expanded does not render notifications, but better keeps the properties concrete
+    property var notificationData: null
+    property bool notificationVisible: false
+    property int notificationRevision: 0
     property var sceneContext: ({})
     property var widgetStates: ({})
+    property var islandContext: null
 
     signal accessRequested(var request)
     signal widgetStatePatchRequested(string widgetId, var patch)
@@ -43,9 +48,6 @@ Item {
     readonly property real requestedHeight: root.hintedDimension(root.sceneContext?.heightHint, root.hasWidget ? Math.max(180, root.widgetHeightHint + Theme.spacingL * 4) : 260)
 
     readonly property bool wantsSplit: false
-    readonly property bool animateContentChange: true
-    readonly property string contentAnimation: "subtle"
-    readonly property int animationRevision: Number(root.sceneContext?.accessId ?? 1)
 
     Core.IslandContentRegistry {
         id: registry

@@ -45,12 +45,6 @@ Item {
         const value = Number(root.loadedContent?.splitPercentage ?? 0.5)
         return Number.isFinite(value) ? Math.max(0.01, Math.min(0.99, value)) : 0.5
     }
-    readonly property bool animateContentChange: root.loadedContent?.animateContentChange === true
-    readonly property string contentAnimation: String(root.loadedContent?.contentAnimation ?? "subtle")
-    readonly property int contentAnimationRevision: {
-        const value = Number(root.loadedContent?.animationRevision ?? 0)
-        return Number.isFinite(value) ? Math.floor(value) : 0
-    }
     readonly property real compactReservationWidth: {
         const contentReservation = Number(root.loadedContent?.requestedReservationWidth)
         if (!Number.isFinite(contentReservation))
@@ -73,6 +67,18 @@ Item {
         }
     }
 
+    readonly property var liveContentContext: ({
+        idleWidth: root.compactWidth,
+        compactMaximumWidth: root.effectiveCompactMaximumWidth,
+        compactHeight: root.compactHeight,
+        maximumWidth: root.maximumWidth,
+        radiusDip: shell.targetRadius,
+        liveRadiusDip: shell.animatedRadius,
+        liveSplitPercentage: shell.animatedSplitPercentage,
+        shapeInset: shell.shapeInset,
+        splitProgress: shell.animatedSplit
+    })
+
     onCompactReservationWidthChanged: {
         if (root.controller.mode === "compact")
             root.retainedCompactReservationWidth = root.compactReservationWidth
@@ -85,53 +91,9 @@ Item {
         id: registry
     }
 
-    function contentContext() {
-        return {
-            idleWidth: root.compactWidth,
-            compactMaximumWidth: root.effectiveCompactMaximumWidth,
-            compactHeight: root.compactHeight,
-            maximumWidth: root.maximumWidth,
-            radiusDip: shell.targetRadius,
-            liveRadiusDip: shell.animatedRadius,
-            liveSplitPercentage: shell.animatedSplitPercentage,
-            shapeInset: shell.shapeInset,
-            splitProgress: shell.animatedSplit
-        }
-    }
-
-    function setOptionalContentProperty(item, name, value) {
-        if (!item)
-            return
-
-        try {
-            if (typeof item[name] !== "undefined")
-                item[name] = value
-        } catch (error) {
-            console.warn(
-                "[IslandPresenter] failed to inject content property ",
-                name,
-                ": ",
-                error
-            )
-        }
-    }
-
-    function syncContentItem(item) {
-        root.setOptionalContentProperty(item, "notificationData", root.controller.currentNotification)
-        root.setOptionalContentProperty(item, "widgetStates", root.controller.widgetStates)
-        root.setOptionalContentProperty(item, "islandContext", root.contentContext())
-        root.setOptionalContentProperty(item, "sceneContext", root.controller.sceneContext)
-    }
-
-    function syncContentInputs() {
-        root.syncContentItem(sceneLoaderA.item)
-        root.syncContentItem(sceneLoaderB.item)
-    }
-
     function applyControllerScene() {
         const mode = root.controller.mode
         root.switchScene(registry.sceneSourceFor(mode))
-        root.syncContentInputs()
     }
 
     function inactiveContentLoader() {
@@ -165,9 +127,7 @@ Item {
 
         const outgoing = root.activeContentLoader
 
-        root.syncContentItem(incoming.item)
         root.activeContentLoader = incoming
-        root.syncContentInputs()
 
         incoming.opacity = 1.0
         if (outgoing && outgoing.item) {
@@ -177,25 +137,96 @@ Item {
         }
     }
 
-    onCompactWidthChanged: root.syncContentInputs()
-    onCompactHeightChanged: root.syncContentInputs()
-    onCompactMaximumWidthChanged: root.syncContentInputs()
-    onMaximumWidthChanged: root.syncContentInputs()
-
     Connections {
         target: root.controller
-
-        function onCurrentNotificationChanged() {
-            root.syncContentInputs()
-        }
 
         function onSceneStateChanged() {
             root.applyControllerScene()
         }
+    }
 
-        function onWidgetStatesChanged() {
-            root.syncContentInputs()
-        }
+    Binding {
+        target: sceneLoaderA.item
+        property: "notificationData"
+        value: root.controller.currentNotification
+        when: sceneLoaderA.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderA.item
+        property: "notificationVisible"
+        value: root.controller.notificationVisible
+        when: sceneLoaderA.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderA.item
+        property: "notificationRevision"
+        value: root.controller.notificationRevision
+        when: sceneLoaderA.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderA.item
+        property: "sceneContext"
+        value: root.controller.sceneContext
+        when: sceneLoaderA.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderA.item
+        property: "widgetStates"
+        value: root.controller.widgetStates
+        when: sceneLoaderA.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderA.item
+        property: "islandContext"
+        value: root.liveContentContext
+        when: sceneLoaderA.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderB.item
+        property: "notificationData"
+        value: root.controller.currentNotification
+        when: sceneLoaderB.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderB.item
+        property: "notificationVisible"
+        value: root.controller.notificationVisible
+        when: sceneLoaderB.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderB.item
+        property: "notificationRevision"
+        value: root.controller.notificationRevision
+        when: sceneLoaderB.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderB.item
+        property: "sceneContext"
+        value: root.controller.sceneContext
+        when: sceneLoaderB.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderB.item
+        property: "widgetStates"
+        value: root.controller.widgetStates
+        when: sceneLoaderB.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderB.item
+        property: "islandContext"
+        value: root.liveContentContext
+        when: sceneLoaderB.item !== null
     }
 
     Island.DynamicIsland {
@@ -207,14 +238,6 @@ Item {
 
         splitEnabled: root.contentWantsSplit
         splitPercentage: root.contentSplitPercentage
-        contentChangeAnimationEnabled: root.animateContentChange
-        contentChangeRevision: root.contentAnimationRevision
-        contentChangeAnimation: root.contentAnimation
-
-        onTargetRadiusChanged: root.syncContentInputs()
-        onAnimatedRadiusChanged: root.syncContentInputs()
-        onAnimatedSplitChanged: root.syncContentInputs()
-        onAnimatedSplitPercentageChanged: root.syncContentInputs()
     }
 
     MouseArea {

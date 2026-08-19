@@ -422,7 +422,7 @@ The state path validates only a non-empty id; it does not require the id to be c
 | `ttl` | Positive milliseconds, floored; defaults to `3000` |
 | `payload` | Shallow-copied domain data passed to the Notification component |
 
-Notification requests ignore `presentation`, `mode`, width/height aliases, `navigation`, and `notificationPolicy`. The Notification visual provides hints; it does not choose its presentation or Island geometry.
+Notification requests ignore `presentation`, `mode`, width/height aliases, `navigation`, and `notificationPolicy`. The Notification visual provides size and side hints; it does not choose its presentation, animation, or Island geometry.
 
 An unregistered non-empty type is accepted into the transient queue but has no visual source, so always add its `notificationSourceFor()` mapping.
 
@@ -440,7 +440,7 @@ During Widget access, new Notifications queue FIFO and the active Notification r
 ### Adding a Notification type
 
 1. Create a component under `island/content/notifications/` with `property var notificationData`.
-2. Expose `minimumWidthHint`, `preferredWidthHint`, `preferredHeightHint`, `preferredSideHint`, and `animationHint` as needed.
+2. Expose `minimumWidthHint`, `preferredWidthHint`, `preferredHeightHint`, and `preferredSideHint` as needed.
 3. Map the semantic type in `notificationSourceFor()`.
 4. Publish a `request: "notification"` event from the feature that detected the change.
 
@@ -448,6 +448,9 @@ The component reads its data from `notificationData.payload`.
 
 ## Rendering and lifecycle constraints
 
+- The Controller gives each activation a new `notificationRevision` and advances it through prepare, visible, exit, and geometry-settle gap phases. A queued Notification is never activated while its predecessor is still collapsing.
+- `IslandNotificationHost` owns Notification entry/exit motion. It keeps the last renderer source resident after exit and releases only the session data, so a repeated Notification type does not cross a Loader unload/reload boundary.
+- Compact, Peek, and Expanded expose one concrete Presenter input contract; both scene Loaders remain bound throughout hand-off.
 - `widgetReady` means the selected Loader source is `Loader.Ready` with a non-null item. Do not add a second readiness latch.
 - When a renderer should auto-back, Loader Error and stable semantic unavailability are rechecked against the current `accessId`, so an old callback cannot pop a newer frame.
 - Peek keeps its background back action active for the whole Widget access, including Loading/Error states.

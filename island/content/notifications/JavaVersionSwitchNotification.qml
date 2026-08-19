@@ -17,7 +17,6 @@ Item {
     }
     readonly property real preferredHeightHint: 36
     readonly property string preferredSideHint: "right"
-    readonly property string animationHint: "subtle"
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint

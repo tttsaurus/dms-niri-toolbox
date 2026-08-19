@@ -14,6 +14,8 @@ Item {
     readonly property var sceneContext: root.sceneState?.context ?? ({})
 
     readonly property var currentNotification: root._currentNotification
+    readonly property bool notificationVisible: root._notificationPhase === "visible"
+    readonly property int notificationRevision: root._notificationRevision
     readonly property var widgetStates: root._widgetStates
 
     property var _rootScene: ({
@@ -24,11 +26,17 @@ Item {
     property int _nextAccessId: 0
 
     property var _currentNotification: null
+    property string _notificationPhase: "idle"
+    property int _notificationRevision: 0
+    property int _currentNotificationTtl: 0
     property var _notificationQueue: []
     property var _suspendedNotification: null
     property int _suspendedRemainingTtl: 0
     property bool _notificationsSuspended: false
     property double _notificationDeadline: 0
+
+    readonly property int _notificationExitDuration: 240
+    readonly property int _notificationGapDuration: 280
 
     property var _widgetStates: ({})
 
@@ -41,6 +49,30 @@ Item {
 
         repeat: false
         onTriggered: root.finishCurrentNotification()
+    }
+
+    Timer {
+        id: notificationEnterTimer
+
+        interval: 0
+        repeat: false
+        onTriggered: root.beginCurrentNotification()
+    }
+
+    Timer {
+        id: notificationReleaseTimer
+
+        interval: root._notificationExitDuration
+        repeat: false
+        onTriggered: root.releaseCurrentNotification()
+    }
+
+    Timer {
+        id: notificationGapTimer
+
+        interval: root._notificationGapDuration
+        repeat: false
+        onTriggered: root.completeNotificationGap()
     }
 
     function normalizedPresentation(value, fallback) {
@@ -98,27 +130,49 @@ Item {
         const override = Number(ttlOverride)
         const ttl = Number.isFinite(override) && override >= 0 ? Math.floor(override) : root.notificationTtl(next)
 
+        notificationEnterTimer.stop()
         notificationTimer.stop()
-        root._currentNotification = next
-        root._notificationDeadline = 0
+        notificationReleaseTimer.stop()
+        notificationGapTimer.stop()
 
-        if (ttl > 0) {
-            root._notificationDeadline = Date.now() + ttl
-            notificationTimer.interval = ttl
+        root._notificationPhase = "preparing"
+        root._currentNotification = next
+        root._currentNotificationTtl = ttl
+        root._notificationDeadline = 0
+        root._notificationRevision++
+
+        notificationEnterTimer.restart()
+    }
+
+    function beginCurrentNotification() {
+        notificationEnterTimer.stop()
+
+        if (root._notificationsSuspended
+                || root._notificationPhase !== "preparing"
+                || !root._currentNotification) return
+
+        root._notificationPhase = "visible"
+
+        if (root._currentNotificationTtl > 0) {
+            root._notificationDeadline = Date.now() + root._currentNotificationTtl
+            notificationTimer.interval = root._currentNotificationTtl
             notificationTimer.start()
         }
     }
 
     function notificationPresentationAvailable() {
-        if (root.accessDepth > 0)
+        if (root._accessChain.length > 0)
             return false
 
-        return root.mode === "compact" || (root.mode === "peek" && String(root.sceneContext?.presentationRole ?? "") === "notificationOverflow")
+        const presentation = String(root._rootScene?.presentation ?? "compact")
+        const context = root._rootScene?.context ?? ({})
+        return presentation === "compact" || (presentation === "peek" && String(context?.presentationRole ?? "") === "notificationOverflow")
     }
 
     function playNextNotification() {
         if (root._notificationsSuspended
                 || !root.notificationPresentationAvailable()
+                || root._notificationPhase !== "idle"
                 || root._currentNotification
                 || root._notificationQueue.length === 0) return
 
@@ -136,6 +190,7 @@ Item {
 
         if (root._notificationsSuspended
                 || !root.notificationPresentationAvailable()
+                || root._notificationPhase !== "idle"
                 || root._currentNotification) {
 
             const queue = root._notificationQueue.slice()
@@ -148,9 +203,44 @@ Item {
     }
 
     function finishCurrentNotification() {
+        notificationEnterTimer.stop()
         notificationTimer.stop()
-        root._currentNotification = null
         root._notificationDeadline = 0
+
+        if (!root._currentNotification) {
+            root._notificationPhase = root._notificationsSuspended ? "suspended" : "idle"
+            if (!root._notificationsSuspended)
+                root.playNextNotification()
+            return
+        }
+
+        if (root._notificationPhase === "exiting"
+                || root._notificationPhase === "gap"
+                || root._notificationPhase === "suspended") return
+
+        root._notificationPhase = "exiting"
+        notificationReleaseTimer.restart()
+    }
+
+    function releaseCurrentNotification() {
+        notificationReleaseTimer.stop()
+
+        if (root._notificationsSuspended || root._notificationPhase !== "exiting")
+            return
+
+        root._currentNotification = null
+        root._currentNotificationTtl = 0
+        root._notificationPhase = "gap"
+        notificationGapTimer.restart()
+    }
+
+    function completeNotificationGap() {
+        notificationGapTimer.stop()
+
+        if (root._notificationsSuspended || root._notificationPhase !== "gap")
+            return
+
+        root._notificationPhase = "idle"
         root.playNextNotification()
     }
 
@@ -159,15 +249,28 @@ Item {
             return
 
         root._notificationsSuspended = true
+        notificationEnterTimer.stop()
         notificationTimer.stop()
+        notificationReleaseTimer.stop()
+        notificationGapTimer.stop()
 
-        if (!root._currentNotification)
-            return
+        root._suspendedNotification = null
+        root._suspendedRemainingTtl = 0
 
-        root._suspendedNotification = root._currentNotification
-        root._suspendedRemainingTtl = root._notificationDeadline > 0 ? Math.max(1, Math.ceil(root._notificationDeadline - Date.now())) : 0
+        if (root._currentNotification && root._notificationPhase === "visible") {
+            root._suspendedNotification = root._currentNotification
+            root._suspendedRemainingTtl = root._notificationDeadline > 0
+                ? Math.max(1, Math.ceil(root._notificationDeadline - Date.now()))
+                : root._currentNotificationTtl
+        } else if (root._currentNotification && root._notificationPhase === "preparing") {
+            root._suspendedNotification = root._currentNotification
+            root._suspendedRemainingTtl = root._currentNotificationTtl
+        }
+
         root._currentNotification = null
+        root._currentNotificationTtl = 0
         root._notificationDeadline = 0
+        root._notificationPhase = "suspended"
     }
 
     function resumeNotifications() {
@@ -177,6 +280,7 @@ Item {
         }
 
         root._notificationsSuspended = false
+        root._notificationPhase = "idle"
 
         if (root._suspendedNotification) {
             const suspended = root._suspendedNotification
@@ -189,6 +293,22 @@ Item {
         }
 
         root.playNextNotification()
+    }
+
+    function commitAccessChain(nextChain) {
+        const chain = Array.isArray(nextChain) ? nextChain.slice() : []
+        const hadAccess = root._accessChain.length > 0
+        const hasAccess = chain.length > 0
+
+        if (!hadAccess && hasAccess)
+            root.suspendNotifications()
+
+        root._accessChain = chain
+
+        if (hadAccess && !hasAccess)
+            root.resumeNotifications()
+        else if (hasAccess && !root._notificationsSuspended)
+            root.suspendNotifications()
     }
 
     function createAccessFrame(request) {
@@ -243,17 +363,13 @@ Item {
             return
 
         const chain = root._accessChain.slice()
-        const enteringAccess = chain.length === 0
 
         if (navigation === "replace" && chain.length > 0)
             chain[chain.length - 1] = frame
         else
             chain.push(frame)
 
-        if (enteringAccess || !root._notificationsSuspended)
-            root.suspendNotifications()
-
-        root._accessChain = chain
+        root.commitAccessChain(chain)
     }
 
     function resetRootPresentation() {
@@ -271,7 +387,7 @@ Item {
     function requestRootPresentation(request) {
         const normalizedRequest = root.objectCopy(request)
 
-        if (root.accessDepth > 0) {
+        if (root._accessChain.length > 0) {
             console.warn("[IslandController] root presentation cannot replace an active Widget access")
             return
         }
@@ -300,7 +416,7 @@ Item {
 
     function navigateBack() {
         if (root._accessChain.length === 0) {
-            if (root.mode !== "compact")
+            if (String(root._rootScene?.presentation ?? "compact") !== "compact")
                 root.resetRootPresentation()
             else if (root._notificationsSuspended)
                 root.resumeNotifications()
@@ -309,16 +425,11 @@ Item {
 
         const chain = root._accessChain.slice()
         chain.pop()
-        root._accessChain = chain
-
-        if (root.accessDepth === 0)
-            root.resumeNotifications()
-        else if (!root._notificationsSuspended)
-            root.suspendNotifications()
+        root.commitAccessChain(chain)
     }
 
     function dismissScene() {
-        if (root.accessDepth > 0) {
+        if (root._accessChain.length > 0) {
             root.navigateBack()
             return
         }

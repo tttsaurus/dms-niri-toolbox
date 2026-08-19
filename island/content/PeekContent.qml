@@ -7,6 +7,8 @@ Item {
     id: root
 
     property var notificationData: null
+    property bool notificationVisible: false
+    property int notificationRevision: 0
     property var sceneContext: ({})
     property var widgetStates: ({})
     property var islandContext: null
@@ -38,8 +40,7 @@ Item {
     readonly property bool primaryWidgetUnavailable:
         root.widgetAccessActive
         && root._displayPrimaryWidgetId === root.primaryWidgetId
-        && (primaryWidgetHost.widgetLoadFailed
-            || (primaryWidgetHost.widgetReady && !primaryWidgetHost.widgetVisible))
+        && (primaryWidgetHost.widgetLoadFailed || (primaryWidgetHost.widgetReady && !primaryWidgetHost.widgetVisible))
 
     readonly property var splitCompanionSpec: root.widgetAccessActive 
         ? (root.sceneContext?.splitCompanion ?? registry.companionFor(root.primaryWidgetId, "peek"))
@@ -75,17 +76,14 @@ Item {
         : ""
     readonly property bool notificationReady:
         root.ownsNotificationSlot
-        && root.notificationData !== null
-        && String(root.notificationSource).length > 0
-        && String(root._displayNotificationSource) === String(root.notificationSource)
-        && notificationLoader.status === Loader.Ready
+        && notificationHost.notificationReady
 
     readonly property real primaryPreferredWidth: Math.max(Number(primaryWidgetHost.preferredWidthHint), 1)
     readonly property real focusedWidgetWidth: Math.min(root.primaryPreferredWidth, Math.max(root.maximumWidth - root.contentPadding * 2, 0))
     readonly property real baseNaturalWidth: overflowWidgetStrip.naturalWidth
 
-    readonly property real notificationPreferredWidth: Math.max(Number(notificationLoader.item?.preferredWidthHint ?? notificationLoader.item?.implicitWidth ?? 0), 0)
-    readonly property string notificationSide: String(notificationLoader.item?.preferredSideHint ?? "right") === "left" ? "left" : "right"
+    readonly property real notificationPreferredWidth: Math.max(Number(notificationHost.preferredWidthHint), 0)
+    readonly property string notificationSide: notificationHost.preferredSideHint
 
     readonly property real splitProgress: Math.max(0, Math.min(1, Number(root.islandContext?.splitProgress ?? 0)))
     readonly property real liveRadiusDip: Math.max(Number(root.islandContext?.liveRadiusDip ?? root.radiusDip), 0)
@@ -136,9 +134,14 @@ Item {
 
     readonly property var notificationSplitPlan: root._displaySplitPlan ?? splitGeometry.failedPlan("no display split", root.idleWidth)
     readonly property var splitPlan: root.widgetAccessActive ? root.focusedSplitPlan : root.notificationSplitPlan
+    readonly property bool notificationPresented:
+        root.ownsNotificationSlot
+        && root.notificationVisible
+        && root.notificationReady
+        && root.notificationSplitPlan.success
     readonly property bool wantsSplit: root.widgetAccessActive
         ? root.splitCompanionReady && root.splitPlan.success
-        : root.notificationData !== null && root.splitPlan.success
+        : root.notificationPresented
     readonly property real splitPercentage: root.splitPlan.success ? root.splitPlan.percentage : 0.5
     readonly property var liveLayout: splitGeometry.layoutForSplitProgress(
         root.width,
@@ -152,8 +155,8 @@ Item {
     readonly property real focusedWidgetViewportWidth: Math.min(root.focusedWidgetWidth, root.liveLayout.otherContentWidth)
 
     readonly property real baseWidth: Math.min(root.maximumWidth, Math.max(root.idleWidth, root.baseNaturalWidth + root.contentPadding * 2))
-    readonly property real normalWidth: root.splitPlan.success && (root.notificationReady || root.splitProgress > 0.001)
-        ? root.splitPlan.islandWidth
+    readonly property real normalWidth: root.notificationSplitPlan.success && (root.notificationPresented || root.splitProgress > 0.001)
+        ? root.notificationSplitPlan.islandWidth
         : root.baseWidth
     readonly property real baseStartOffset: root.wantsSplit || root.splitProgress > 0.001
         ? root.liveLayout.otherContentStartOffset + Math.max((root.liveLayout.otherContentWidth - root.baseNaturalWidth) / 2, 0)
@@ -165,17 +168,6 @@ Item {
         : root.normalWidth
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
 
-    readonly property bool animateContentChange: true
-    readonly property string contentAnimation: root.notificationReady
-        ? String(notificationLoader.item?.animationHint ?? "subtle")
-        : "subtle"
-    readonly property int animationRevision: root.widgetAccessActive
-        ? Number(root.sceneContext?.accessId ?? 0)
-        : root._animationRevision
-
-    property int _animationRevision: 0
-    property url _displayNotificationSource: ""
-    property var _displayNotificationData: null
     property var _displaySplitPlan: null
     property string _displayFocusedSplitOwner: ""
     property var _displayFocusedSplitPlan: null
@@ -221,9 +213,7 @@ Item {
         const accessId = root.currentAccessId()
         const epoch = root._availabilityEpoch
         Qt.callLater(function() {
-            if (root._availabilityEpoch !== epoch
-                    || root.currentAccessId() !== accessId
-                    || !root.primaryWidgetUnavailable) return
+            if (root._availabilityEpoch !== epoch || root.currentAccessId() !== accessId || !root.primaryWidgetUnavailable) return
 
             root.leaveWidgetAccess(accessId, epoch)
         })
@@ -243,7 +233,7 @@ Item {
         if (root.widgetAccessActive)
             return
 
-        if (root.notificationReady) {
+        if (root.notificationVisible && root.notificationReady) {
             if (!root.peekSplitPlan.success) {
                 console.warn("[PeekContent] unable to preserve the Notification piece within maximumWidth")
                 return
@@ -260,21 +250,12 @@ Item {
             return
         }
 
-        if (root.presentationRole === "notificationOverflow"
-                && !root.notificationData
-                && root.splitProgress <= 0.001) {
-
+        if (root.presentationRole === "notificationOverflow" && !root.notificationVisible && root.splitProgress <= 0.001) {
             root.sceneRequested({
                 presentation: "compact",
                 context: {}
             })
         }
-    }
-
-    function clearRetainedNotification() {
-        root._displayNotificationSource = ""
-        root._displayNotificationData = null
-        root._displaySplitPlan = null
     }
 
     function reconcileFocusedSplitPlan() {
@@ -316,24 +297,17 @@ Item {
         }
     }
 
-    Loader {
-        id: notificationLoader
+    Content.IslandNotificationHost {
+        id: notificationHost
 
-        source: root._displayNotificationSource
-        asynchronous: false
-        visible: opacity > 0.001
-        opacity: root.ownsNotificationSlot && root._displayNotificationData && (root.notificationReady || root.notificationData === null)
-            ? root.splitProgress
-            : 0.0
+        notificationSource: root.notificationSource
+        notificationData: root.notificationData
+        notificationVisible: root.ownsNotificationSlot && root.notificationVisible
+        notificationRevision: root.notificationRevision
+        splitProgress: root.splitProgress
         x: root.liveLayout.pieceContentStartOffset
-        y: 0
         width: root.splitPlan.success ? root.splitPlan.pieceContentWidth : 0
         height: root.height
-
-        onLoaded: {
-            item.notificationData = root._displayNotificationData
-            Qt.callLater(root.reconcileNotificationPresentation)
-        }
     }
 
     MouseArea {
@@ -420,23 +394,12 @@ Item {
         }
     }
 
-    onNotificationDataChanged: {
-        if (root.notificationData) {
-            const source = registry.notificationSourceFor(root.notificationData)
-            if (String(source).length > 0) {
-                root._displayNotificationSource = source
-                root._displayNotificationData = root.notificationData
-
-                if (notificationLoader.item)
-                    notificationLoader.item.notificationData = root.notificationData
-            }
-
-            root._animationRevision++
-        } else if (root.splitProgress <= 0.001) {
-            root.clearRetainedNotification()
-        }
+    onNotificationVisibleChanged: Qt.callLater(root.reconcileNotificationPresentation)
+    onNotificationRevisionChanged: {
+        root._displaySplitPlan = null
+        Qt.callLater(root.reconcileNotificationPresentation)
     }
-
+    onNotificationReadyChanged: Qt.callLater(root.reconcileNotificationPresentation)
     onPeekSplitPlanChanged: Qt.callLater(root.reconcileNotificationPresentation)
     onCompactCandidatePlanChanged: Qt.callLater(root.reconcileNotificationPresentation)
     onFocusedSplitCandidateChanged: root.reconcileFocusedSplitPlan()
@@ -445,19 +408,13 @@ Item {
     onSplitProgressChanged: {
         Qt.callLater(root.reconcileNotificationPresentation)
 
-        if (root.splitProgress <= 0.001 && !root.notificationData)
-            root.clearRetainedNotification()
-
         if (root.splitProgress <= 0.001 && !root.splitCompanionReady) {
             root._displayFocusedSplitOwner = ""
             root._displayFocusedSplitPlan = null
         }
     }
 
-    onOwnsNotificationSlotChanged: {
-        if (!root.ownsNotificationSlot)
-            root.clearRetainedNotification()
-    }
+    onOwnsNotificationSlotChanged: Qt.callLater(root.reconcileNotificationPresentation)
 
     onWidgetAccessActiveChanged: {
         root._focusedBackPending = false

@@ -7,6 +7,8 @@ Item {
     id: root
 
     property var notificationData: null
+    property bool notificationVisible: false
+    property int notificationRevision: 0
     property var widgetStates: ({})
     property var islandContext: null
 
@@ -28,15 +30,11 @@ Item {
     readonly property real shapeInset: Math.max(Number(root.islandContext?.shapeInset ?? 5), 0)
 
     readonly property url notificationSource: registry.notificationSourceFor(root.notificationData)
-    readonly property bool notificationReady:
-        root.notificationData !== null
-        && String(root.notificationSource).length > 0
-        && String(root._displayNotificationSource) === String(root.notificationSource)
-        && notificationLoader.status === Loader.Ready
+    readonly property bool notificationReady: notificationHost.notificationReady
 
     readonly property real baseNaturalWidth: idleWidgetStrip.naturalWidth
-    readonly property real notificationPreferredWidth: Math.max(Number(notificationLoader.item?.preferredWidthHint ?? notificationLoader.item?.implicitWidth ?? 0), 0)
-    readonly property string notificationSide: String(notificationLoader.item?.preferredSideHint ?? "right") === "left" ? "left" : "right"
+    readonly property real notificationPreferredWidth: Math.max(Number(notificationHost.preferredWidthHint), 0)
+    readonly property string notificationSide: notificationHost.preferredSideHint
 
     readonly property real splitProgress: Math.max(0, Math.min(1, Number(root.islandContext?.splitProgress ?? 0)))
     readonly property real liveRadiusDip: Math.max(Number(root.islandContext?.liveRadiusDip ?? root.radiusDip), 0)
@@ -57,7 +55,11 @@ Item {
         : splitGeometry.failedPlan("no notification", root.baseIslandWidth)
 
     readonly property var splitPlan: root._displaySplitPlan ?? splitGeometry.failedPlan("no display split", root.baseIslandWidth)
-    readonly property bool wantsSplit: root.notificationData !== null && root.splitPlan.success
+    readonly property bool notificationPresented:
+        root.notificationVisible
+        && root.notificationReady
+        && root.splitPlan.success
+    readonly property bool wantsSplit: root.notificationPresented
     readonly property real splitPercentage: root.splitPlan.success ? root.splitPlan.percentage : 0.5
     readonly property var liveLayout: splitGeometry.layoutForSplitProgress(
         root.width,
@@ -68,20 +70,16 @@ Item {
         String(root.splitPlan?.side ?? root.notificationSide),
         root.piecePadding
     )
+    readonly property real baseLayoutCorrection:
+        (root.shapeInset + root.piecePadding - root.contentPadding)
+        * (1.0 - root.splitProgress)
 
-    readonly property real requestedWidth: root.splitPlan.success && (root.notificationReady || root.splitProgress > 0.001)
+    readonly property real requestedWidth: root.splitPlan.success && (root.notificationPresented || root.splitProgress > 0.001)
         ? root.splitPlan.islandWidth
         : root.baseIslandWidth
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
     readonly property real requestedReservationWidth: root.requestedWidth
 
-    readonly property bool animateContentChange: root.notificationReady
-    readonly property string contentAnimation: String(notificationLoader.item?.animationHint ?? "subtle")
-    readonly property int animationRevision: root._animationRevision
-
-    property int _animationRevision: 0
-    property url _displayNotificationSource: ""
-    property var _displayNotificationData: null
     property var _displaySplitPlan: null
 
     Core.IslandContentRegistry {
@@ -93,7 +91,7 @@ Item {
     }
 
     function reconcileNotificationPresentation() {
-        if (!root.notificationReady)
+        if (!root.notificationVisible || !root.notificationReady)
             return
 
         if (root.compactSplitPlan.success) {
@@ -111,21 +109,15 @@ Item {
         })
     }
 
-    function clearRetainedNotification() {
-        root._displayNotificationSource = ""
-        root._displayNotificationData = null
-        root._displaySplitPlan = null
-    }
-
     Item {
         id: basePiece
 
         x: root.wantsSplit || root.splitProgress > 0.001
-            ? root.liveLayout.otherContentStartOffset
+            ? root.liveLayout.otherContentStartOffset - root.baseLayoutCorrection
             : root.contentPadding
         y: 0
         width: root.wantsSplit || root.splitProgress > 0.001
-            ? root.liveLayout.otherContentWidth
+            ? root.liveLayout.otherContentWidth + root.baseLayoutCorrection * 2
             : Math.max(root.width - root.contentPadding * 2, 0)
         height: root.height
 
@@ -153,47 +145,24 @@ Item {
         }
     }
 
-    Loader {
-        id: notificationLoader
+    Content.IslandNotificationHost {
+        id: notificationHost
 
-        source: root._displayNotificationSource
-        asynchronous: false
-        visible: opacity > 0.001
-        opacity: root._displayNotificationData && (root.notificationReady || root.notificationData === null)
-            ? root.splitProgress
-            : 0.0
+        notificationSource: root.notificationSource
+        notificationData: root.notificationData
+        notificationVisible: root.notificationVisible
+        notificationRevision: root.notificationRevision
+        splitProgress: root.splitProgress
         x: root.liveLayout.pieceContentStartOffset
-        y: 0
         width: root.splitPlan.success ? root.splitPlan.pieceContentWidth : 0
         height: root.height
-
-        onLoaded: {
-            item.notificationData = root._displayNotificationData
-            Qt.callLater(root.reconcileNotificationPresentation)
-        }
     }
 
-    onNotificationDataChanged: {
-        if (root.notificationData) {
-            const source = registry.notificationSourceFor(root.notificationData)
-            if (String(source).length > 0) {
-                root._displayNotificationSource = source
-                root._displayNotificationData = root.notificationData
-
-                if (notificationLoader.item)
-                    notificationLoader.item.notificationData = root.notificationData
-            }
-
-            root._animationRevision++
-        } else if (root.splitProgress <= 0.001) {
-            root.clearRetainedNotification()
-        }
+    onNotificationVisibleChanged: Qt.callLater(root.reconcileNotificationPresentation)
+    onNotificationRevisionChanged: {
+        root._displaySplitPlan = null
+        Qt.callLater(root.reconcileNotificationPresentation)
     }
-
+    onNotificationReadyChanged: Qt.callLater(root.reconcileNotificationPresentation)
     onCompactSplitPlanChanged: Qt.callLater(root.reconcileNotificationPresentation)
-
-    onSplitProgressChanged: {
-        if (root.splitProgress <= 0.001 && !root.notificationData)
-            root.clearRetainedNotification()
-    }
 }

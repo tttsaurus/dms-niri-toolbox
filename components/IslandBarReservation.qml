@@ -45,9 +45,16 @@ Item {
 
     readonly property string centeringMode: SettingsData.centeringMode
 
-    function mappedCenterWidgets() {
-        const configured = toolboxRoot.barConfig?.centerWidgets || []
-        return configured.map(
+    // This binding only re-evaluates when the configured Widget list changes.
+    // Reservation-width frames reuse these exact objects, so ScriptModel only
+    // updates the spacer row instead of invalidating every ordinary Widget.
+    readonly property var mappedCenterWidgets: root.normalizeCenterWidgets(
+        root.toolboxRoot.barConfig?.centerWidgets || []
+    )
+
+    function normalizeCenterWidgets(configured) {
+        const widgets = Array.isArray(configured) ? configured : []
+        return widgets.map(
             (widget, index) => {
                 if (typeof widget === "string") {
                     return {
@@ -161,7 +168,7 @@ Item {
     }
 
     function projectedWidgets() {
-        const widgets = mappedCenterWidgets()
+        const widgets = root.mappedCenterWidgets.slice()
         switch (root.centeringMode) {
             case "index":
                 return applyIndexReservation(widgets)
@@ -192,13 +199,29 @@ Item {
     }
 
     Binding {
+        id: reservationIdentityBinding
+
+        // projectedWidgets() returns fresh maps while reservedWidth animates.
+        // Key ScriptModel by the stable id so it emits dataChanged for the
+        // spacer instead of removing and recreating every bar Widget delegate.
+        target: root.toolboxRoot.blurBarWindow ? root.toolboxRoot.blurBarWindow.centerWidgetsModel : null
+        property: "objectProp"
+        value: "id"
+        when: root.reservationBindingEnabled && root.toolboxRoot.dynamicIslandEnabled && root.toolboxRoot.blurBarWindow !== null
+        restoreMode: Binding.RestoreBinding
+    }
+
+    Binding {
         id: reservationBinding
 
         target: root.toolboxRoot.blurBarWindow ? root.toolboxRoot.blurBarWindow.centerWidgetsModel : null
 
         property: "values"
 
-        when: root.reservationBindingEnabled && root.toolboxRoot.dynamicIslandEnabled && root.toolboxRoot.blurBarWindow !== null
+        when: root.reservationBindingEnabled
+            && root.toolboxRoot.dynamicIslandEnabled
+            && root.toolboxRoot.blurBarWindow !== null
+            && String(root.toolboxRoot.blurBarWindow.centerWidgetsModel.objectProp) === "id"
 
         value: root.projectedWidgets()
     }
