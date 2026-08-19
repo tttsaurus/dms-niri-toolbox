@@ -27,6 +27,57 @@ QtObject {
 
     function widgetDefinitionFor(widgetId) {
         switch (String(widgetId ?? "")) {
+            case "test1":
+                return {
+                    source: Qt.resolvedUrl("../content/widgets/Test1Widget.qml"),
+                    activations: {
+                        compact: {
+                            navigation: "push",
+                            widgetId: "test2",
+                            presentation: "peek"
+                        }
+                    }
+                }
+            case "test2":
+                return {
+                    source: Qt.resolvedUrl("../content/widgets/Test2Widget.qml"),
+                    activations: {
+                        peek: {
+                            navigation: "back"
+                        }
+                    },
+                    companions: {
+                        peek: {
+                            widgetId: "test3Launcher",
+                            side: "right",
+                            square: true
+                        }
+                    }
+                }
+            case "test3":
+                return {
+                    source: Qt.resolvedUrl("../content/widgets/Test3Widget.qml"),
+                    activations: {
+                        peek: {
+                            navigation: "back"
+                        }
+                    }
+                }
+            case "test3Launcher":
+                return {
+                    source: Qt.resolvedUrl("../content/widgets/Test3LauncherWidget.qml"),
+                    activations: {
+                        peek: {
+                            navigation: "push",
+                            widgetId: "test3",
+                            presentation: "peek"
+                        }
+                    }
+                }
+            case "spacer":
+                return {
+                    source: Qt.resolvedUrl("../content/widgets/SpacerWidget.qml")
+                }
             case "clock":
                 return {
                     source: Qt.resolvedUrl("../content/widgets/ClockWidget.qml")

@@ -33,11 +33,19 @@ Item {
         ? root.sceneContext.widgets
         : []
 
-    readonly property bool primaryWidgetReady: root.widgetAccessActive && root._displayPrimaryWidgetId === root.primaryWidgetId && primaryWidgetHost.widgetReady
-    readonly property bool primaryWidgetVisible: root.primaryWidgetReady && primaryWidgetHost.widgetVisible
+    readonly property bool displayedAccessMatchesCurrent:
+        root._displayAccessId === root.currentAccessId()
+        && root._displayPrimaryWidgetId === root.primaryWidgetId
+    readonly property bool primaryWidgetReady:
+        root.widgetAccessActive
+        && root.displayedAccessMatchesCurrent
+        && primaryWidgetHost.widgetReady
+    readonly property bool primaryWidgetVisible: 
+        root.primaryWidgetReady
+        && primaryWidgetHost.widgetVisible
     readonly property bool primaryWidgetUnavailable:
         root.widgetAccessActive
-        && root._displayPrimaryWidgetId === root.primaryWidgetId
+        && root.displayedAccessMatchesCurrent
         && (primaryWidgetHost.widgetLoadFailed || (primaryWidgetHost.widgetReady && !primaryWidgetHost.widgetVisible))
 
     readonly property var splitCompanionSpec: root.widgetAccessActive 
@@ -60,6 +68,7 @@ Item {
     property real accessPresentationProgress: root.widgetAccessActive && root.primaryWidgetVisible ? 1.0 : 0.0
     property bool _focusedBackPending: false
     property int _availabilityEpoch: 0
+    property int _displayAccessId: 0
     property string _displayPrimaryWidgetId: ""
 
     Behavior on accessPresentationProgress {
@@ -206,12 +215,24 @@ Item {
 
     function reconcileDisplayedPrimaryWidget() {
         if (root.widgetAccessActive) {
-            root._displayPrimaryWidgetId = root.primaryWidgetId
+            const accessId = root.currentAccessId()
+            if (root._displayAccessId === accessId && root._displayPrimaryWidgetId === root.primaryWidgetId)
+                return
+
+            if (root._displayAccessId <= 0
+                    || root._displayPrimaryWidgetId.length === 0
+                    || root.accessPresentationProgress <= 0.001) {
+                        
+                root._displayAccessId = accessId
+                root._displayPrimaryWidgetId = root.primaryWidgetId
+            }
             return
         }
 
-        if (root.accessPresentationProgress <= 0.001)
+        if (root.accessPresentationProgress <= 0.001) {
+            root._displayAccessId = 0
             root._displayPrimaryWidgetId = ""
+        }
     }
 
     function reconcileNotificationPresentation() {

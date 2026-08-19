@@ -18,17 +18,20 @@ Core.IslandWidget {
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
 
-    readonly property string dateText: {
-        const text = Qt.formatDate(root.now, "ddd d").toLowerCase()
-        return text.charAt(0).toUpperCase() + text.slice(1)
-    }
-
     Timer {
         interval: 1000
         repeat: true
         running: root.widgetVisible
         triggeredOnStart: true
         onTriggered: root.now = new Date()
+    }
+
+    MouseArea {
+        anchors.fill: parent
+        enabled: root.widgetVisible
+        cursorShape: Qt.PointingHandCursor
+
+        onClicked: root.activated()
     }
 
     Row {
@@ -44,27 +47,15 @@ Core.IslandWidget {
 
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
-            text: Qt.formatTime(root.now, "HH:mm")
-            font.pixelSize: Theme.fontSizeMedium
-            font.weight: Font.Bold
-            color: Theme.surfaceText
-        }
-
-        StyledText {
-            anchors.verticalCenter: parent.verticalCenter
-            text: "•"
+            text: "[Test3 " + Qt.formatTime(root.now, "HH:mm") + "]"
             font.pixelSize: Theme.fontSizeMedium
             font.weight: Font.DemiBold
             color: Theme.surfaceText
         }
 
-        StyledText {
-            anchors.verticalCenter: parent.verticalCenter
-            text: dateText
-            font.pixelSize: Theme.fontSizeMedium
-            font.weight: Font.DemiBold
-            font.italic: true
-            color: Theme.surfaceVariantText
+        Item {
+            width: Theme.spacingS
+            height: 1
         }
     }
 }

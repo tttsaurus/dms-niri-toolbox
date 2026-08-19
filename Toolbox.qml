@@ -24,18 +24,6 @@ PluginComponent {
 
     readonly property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? false
 
-    // Keep the island's Overlay layer strictly above the bar. DMS may otherwise
-    // place the bar on Overlay too, where stacking falls back to surface map order.
-    readonly property var barLayerShell: root.blurBarWindow ? root.blurBarWindow.WlrLayershell : null
-
-    Binding {
-        target: root.barLayerShell
-        property: "layer"
-        value: WlrLayer.Top
-        when: root.dynamicIslandEnabled && root.barLayerShell !== null
-        restoreMode: Binding.RestoreBinding
-    }
-    
     readonly property int islandInitialIdleWidth: {
         const value = Number(pluginData.islandReservedWidth ?? 168)
         return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 168
@@ -234,6 +222,17 @@ PluginComponent {
     onShowDynamicIslandPageChanged: ensureValidPage()
 
     Component.onCompleted: ensureValidPage()
+
+    // // keep the island's overlay layer strictly above the bar
+    // readonly property var barLayerShell: root.blurBarWindow ? root.blurBarWindow.WlrLayershell : null
+
+    // Binding {
+    //     target: root.barLayerShell
+    //     property: "layer"
+    //     value: WlrLayer.Top
+    //     when: root.dynamicIslandEnabled && root.barLayerShell !== null
+    //     restoreMode: Binding.RestoreBinding
+    // }
 
     IslandBarReservation {
         id: islandBarReservation

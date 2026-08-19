@@ -19,6 +19,9 @@ Item {
 
     readonly property var widgets: [
         "clock",
+        // "spacer",
+        // "test1",
+        // "spacer",
         "musicTrack"
     ]
 
