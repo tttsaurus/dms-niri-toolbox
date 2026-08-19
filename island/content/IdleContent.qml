@@ -9,6 +9,7 @@ Item {
     property var notificationData: null
     property bool notificationVisible: false
     property int notificationRevision: 0
+    property var sceneContext: ({})
     property var widgetStates: ({})
     property var islandContext: null
 
@@ -103,7 +104,6 @@ Item {
             presentation: "peek",
             context: {
                 presentationRole: "notificationOverflow",
-                compactRadiusDip: root.radiusDip,
                 widgets: root.widgets.slice()
             }
         })

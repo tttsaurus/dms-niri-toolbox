@@ -100,6 +100,29 @@ Item {
         return root.activeContentLoader === sceneLoaderA ? sceneLoaderB : sceneLoaderA
     }
 
+    function sceneInitialProperties() {
+        return {
+            notificationData: root.controller.currentNotification,
+            notificationVisible: root.controller.notificationVisible,
+            notificationRevision: root.controller.notificationRevision,
+            sceneContext: root.controller.sceneContext,
+            widgetStates: root.controller.widgetStates,
+            islandContext: root.liveContentContext
+        }
+    }
+
+    function shouldRetainOutgoingScene(outgoing, incoming) {
+        if (!outgoing || !incoming || root.controller.mode !== "peek")
+            return false
+
+        const role = String(root.controller.sceneContext?.presentationRole ?? "")
+        if (role !== "notificationOverflow")
+            return false
+
+        return String(outgoing.source) === String(registry.sceneSourceFor("compact"))
+            && String(incoming.source) === String(registry.sceneSourceFor("peek"))
+    }
+
     function switchScene(source) {
         const sourceText = String(source ?? "")
         if (sourceText.length === 0)
@@ -116,7 +139,7 @@ Item {
             return
         }
 
-        incoming.source = source
+        incoming.setSource(source, root.sceneInitialProperties())
         if (incoming.status === Loader.Ready)
             root.activateSceneLoader(incoming)
     }
@@ -127,13 +150,24 @@ Item {
 
         const outgoing = root.activeContentLoader
 
+        if (root.cleanupContentLoader === incoming) {
+            sceneCleanupTimer.stop()
+            root.cleanupContentLoader = null
+        }
+
         root.activeContentLoader = incoming
 
         incoming.opacity = 1.0
         if (outgoing && outgoing.item) {
             outgoing.opacity = 0.0
-            root.cleanupContentLoader = outgoing
-            sceneCleanupTimer.restart()
+
+            if (root.shouldRetainOutgoingScene(outgoing, incoming)) {
+                sceneCleanupTimer.stop()
+                root.cleanupContentLoader = null
+            } else {
+                root.cleanupContentLoader = outgoing
+                sceneCleanupTimer.restart()
+            }
         }
     }
 

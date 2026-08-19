@@ -21,10 +21,8 @@ Item {
     readonly property real contentPadding: 10
     readonly property real baseSpacing: 6
     readonly property real idleWidth: Math.max(Number(root.islandContext?.idleWidth ?? 168), 1)
-    readonly property real compactMaximumWidth: Math.max(root.idleWidth, Number(root.islandContext?.compactMaximumWidth ?? root.idleWidth))
     readonly property real maximumWidth: Math.max(root.idleWidth, Number(root.islandContext?.maximumWidth ?? 4096))
     readonly property real radiusDip: Math.max(Number(root.islandContext?.radiusDip ?? 18), 0)
-    readonly property real compactRadiusDip: Math.max(Number(root.sceneContext?.compactRadiusDip ?? root.radiusDip), 0)
     readonly property real shapeInset: Math.max(Number(root.islandContext?.shapeInset ?? 5), 0)
 
     readonly property string presentationRole: String(root.sceneContext?.presentationRole ?? "")
@@ -94,19 +92,6 @@ Item {
             root.idleWidth,
             root.maximumWidth,
             root.radiusDip,
-            root.shapeInset,
-            root.notificationPreferredWidth,
-            root.notificationSide,
-            root.baseNaturalWidth,
-            root.piecePadding
-        )
-        : splitGeometry.failedPlan("no notification", root.idleWidth)
-
-    readonly property var compactCandidatePlan: root.notificationReady
-        ? splitGeometry.findPlanForPiece(
-            root.idleWidth,
-            root.compactMaximumWidth,
-            root.compactRadiusDip,
             root.shapeInset,
             root.notificationPreferredWidth,
             root.notificationSide,
@@ -240,13 +225,6 @@ Item {
             }
 
             root._displaySplitPlan = root.peekSplitPlan
-
-            if (root.presentationRole === "notificationOverflow" && root.compactCandidatePlan.success) {
-                root.sceneRequested({
-                    presentation: "compact",
-                    context: {}
-                })
-            }
             return
         }
 
@@ -401,7 +379,6 @@ Item {
     }
     onNotificationReadyChanged: Qt.callLater(root.reconcileNotificationPresentation)
     onPeekSplitPlanChanged: Qt.callLater(root.reconcileNotificationPresentation)
-    onCompactCandidatePlanChanged: Qt.callLater(root.reconcileNotificationPresentation)
     onFocusedSplitCandidateChanged: root.reconcileFocusedSplitPlan()
     onFocusedSplitOwnerChanged: root.reconcileFocusedSplitPlan()
 
