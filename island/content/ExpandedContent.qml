@@ -109,41 +109,13 @@ Item {
                 anchors {
                     left: parent.left
                     verticalCenter: parent.verticalCenter
+                    verticalCenterOffset: -7
                 }
 
                 text: root.title
                 font.pixelSize: Theme.fontSizeLarge
                 font.weight: Font.Bold
                 color: Theme.surfaceText
-            }
-
-            Rectangle {
-                width: 30
-                height: 30
-                radius: 15
-
-                anchors {
-                    right: parent.right
-                    verticalCenter: parent.verticalCenter
-                }
-
-                color: closeArea.containsMouse ? Theme.surfaceContainerHigh : "transparent"
-
-                DankIcon {
-                    anchors.centerIn: parent
-                    name: "close"
-                    size: Theme.iconSize - 4
-                    color: Theme.surfaceText
-                }
-
-                MouseArea {
-                    id: closeArea
-
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.dismissRequested()
-                }
             }
         }
 
@@ -167,6 +139,7 @@ Item {
             onStatePatchRequested: function(patch) {
                 root.widgetStatePatchRequested(root.widgetId, patch)
             }
+            
             onAccessRequested: function(request) {
                 root.accessRequested(Object.assign({}, request))
             }

@@ -73,8 +73,10 @@ Item {
     property var _displaySceneContext: ({})
 
     Behavior on accessPresentationProgress {
+        id: accessPresentationBehavior
+
         NumberAnimation {
-            duration: 180
+            duration: Number(accessPresentationBehavior.targetValue) > 0.5 ? 140 : 110
             easing.type: Easing.OutCubic
         }
     }
@@ -390,6 +392,7 @@ Item {
             onStatePatchRequested: function(patch) {
                 root.widgetStatePatchRequested(root.splitCompanionWidgetId, patch)
             }
+            
             onAccessRequested: function(request) {
                 root.accessRequested(Object.assign({}, request))
             }

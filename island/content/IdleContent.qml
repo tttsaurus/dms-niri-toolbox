@@ -19,9 +19,8 @@ Item {
 
     readonly property var widgets: [
         "clock",
-        // "spacer",
         // "test1",
-        // "spacer",
+        "spacer",
         "musicTrack"
     ]
 
@@ -142,6 +141,7 @@ Item {
             onStatePatchRequested: function(widgetId, patch) {
                 root.widgetStatePatchRequested(widgetId, patch)
             }
+            
             onAccessRequested: function(request) {
                 root.accessRequested(Object.assign({}, request))
             }
