@@ -176,7 +176,7 @@ Item {
             root.publishIslandEvent({
                 request: "notification",
                 type: "javaVersionSwitch",
-                ttl: 1000,
+                ttl: 1500,
                 payload: {
                     label: parseJavaMajorVersion(javaDropdown.currentValue)
                 }

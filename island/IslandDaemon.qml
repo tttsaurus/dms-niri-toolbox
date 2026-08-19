@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 
 import qs.Modules.Plugins
+import qs.Services
 
 import "core" as Core
 
@@ -22,6 +23,9 @@ PluginComponent {
     }
 
     property int barAnchorRevision: 0
+    property bool previousPluggedIn: false
+
+    Component.onCompleted: root.previousPluggedIn = BatteryService.isPluggedIn
 
     function barAnchorFor(screenName) {
         // getGlobalVar() is not a reactive QML property. Reading the revision
@@ -63,6 +67,30 @@ PluginComponent {
         pluginId: root.pluginId
 
         onRequestReceived: (requestType, request) => islandController.acceptRequest(requestType, request)
+    }
+
+    Connections {
+        target: BatteryService
+
+        function onIsPluggedInChanged() {
+            const pluggedIn = BatteryService.isPluggedIn
+            const wasPluggedIn = root.previousPluggedIn
+            root.previousPluggedIn = pluggedIn
+
+            if (BatteryService.suppressSound
+                    || !root.dynamicIslandEnabled
+                    || !BatteryService.batteryAvailable
+                    || !pluggedIn
+                    || wasPluggedIn) return
+
+            islandController.acceptRequest("notification", {
+                type: "powerConnected",
+                ttl: 2000,
+                payload: {
+                    level: Math.round(BatteryService.batteryLevel)
+                }
+            })
+        }
     }
 
     Connections {

@@ -20,6 +20,8 @@ QtObject {
         switch (String(notification?.type ?? "")) {
             case "javaVersionSwitch":
                 return Qt.resolvedUrl("../content/notifications/JavaVersionSwitchNotification.qml")
+            case "powerConnected":
+                return Qt.resolvedUrl("../content/notifications/PowerConnectedNotification.qml")
             default:
                 return ""
         }
