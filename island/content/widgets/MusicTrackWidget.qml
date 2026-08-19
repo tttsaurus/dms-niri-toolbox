@@ -55,7 +55,7 @@ Core.IslandWidget {
         return root.height > 1 ? root.height : 36
     }
     readonly property real controlInset: Math.max(3, Math.min(Number(root.hostInset) || 5, root.effectiveHostHeight * 0.24))
-    readonly property real availableControlHeight: Math.max(14, root.effectiveHostHeight - root.controlInset * 2)
+    readonly property real availableControlHeight: Math.max(14, Math.min(36, root.effectiveHostHeight - root.controlInset * 2))
     readonly property real artworkSize: Math.max(14, root.availableControlHeight * 0.72)
     readonly property real artworkRadius: Math.max(4, root.artworkSize * 0.25)
     readonly property real playButtonSize: Math.max(14, root.artworkSize * 0.88)
