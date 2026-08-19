@@ -98,8 +98,31 @@ Item {
         root.switchScene(registry.sceneSourceFor(mode))
     }
 
-    function inactiveContentLoader() {
-        return root.activeContentLoader === sceneLoaderA ? sceneLoaderB : sceneLoaderA
+    function sceneLoaderForSource(source) {
+        const sourceText = String(source ?? "")
+        const loaders = [sceneLoaderA, sceneLoaderB, sceneLoaderC]
+
+        if (root.retainedCompactContentLoader
+                && root.retainedCompactContentLoader !== root.activeContentLoader
+                && String(root.retainedCompactContentLoader.source) === sourceText
+                && root.retainedCompactContentLoader.status === Loader.Ready)
+            return root.retainedCompactContentLoader
+
+        for (let i = 0; i < loaders.length; i++) {
+            const loader = loaders[i]
+            if (loader === root.activeContentLoader || loader === root.retainedCompactContentLoader)
+                continue
+            if (String(loader.source) === sourceText && loader.status === Loader.Ready)
+                return loader
+        }
+
+        for (let i = 0; i < loaders.length; i++) {
+            const loader = loaders[i]
+            if (loader !== root.activeContentLoader && loader !== root.retainedCompactContentLoader)
+                return loader
+        }
+
+        return null
     }
 
     function sceneInitialProperties() {
@@ -133,11 +156,13 @@ Item {
         if (root.activeContentLoader && String(root.activeContentLoader.source) === sourceText)
             return
 
-        const incoming = root.activeContentLoader ? root.inactiveContentLoader() : sceneLoaderA
-        incoming.opacity = 0.0
+        const incoming = root.activeContentLoader ? root.sceneLoaderForSource(sourceText) : sceneLoaderA
+        if (!incoming) {
+            console.warn("[IslandPresenter] no scene loader available for: ", sourceText)
+            return
+        }
 
-        if (incoming === root.retainedCompactContentLoader && String(incoming.source) !== sourceText)
-            root.retainedCompactContentLoader = null
+        incoming.opacity = 0.0
 
         if (String(incoming.source) === sourceText && incoming.status === Loader.Ready) {
             root.activateSceneLoader(incoming)
@@ -280,6 +305,48 @@ Item {
         when: sceneLoaderB.item !== null
     }
 
+    Binding {
+        target: sceneLoaderC.item
+        property: "notificationData"
+        value: root.controller.currentNotification
+        when: sceneLoaderC.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderC.item
+        property: "notificationVisible"
+        value: root.controller.notificationVisible
+        when: sceneLoaderC.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderC.item
+        property: "notificationRevision"
+        value: root.controller.notificationRevision
+        when: sceneLoaderC.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderC.item
+        property: "sceneContext"
+        value: root.controller.sceneContext
+        when: sceneLoaderC.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderC.item
+        property: "widgetStates"
+        value: root.controller.widgetStates
+        when: sceneLoaderC.item !== null
+    }
+
+    Binding {
+        target: sceneLoaderC.item
+        property: "islandContext"
+        value: root.liveContentContext
+        when: sceneLoaderC.item !== null
+    }
+
     Island.DynamicIsland {
         id: shell
 
@@ -360,6 +427,34 @@ Item {
         }
     }
 
+    Loader {
+        id: sceneLoaderC
+
+        parent: shell.contentItem
+        anchors.fill: parent
+        z: root.activeContentLoader === sceneLoaderC ? 2 : 1
+
+        asynchronous: false
+        opacity: 0.0
+        visible: opacity > 0.001
+        enabled: root.activeContentLoader === sceneLoaderC
+
+        Behavior on opacity {
+            enabled: !root.suppressSceneOpacityAnimation
+
+            NumberAnimation {
+                duration: 180
+                easing.type: Easing.OutCubic
+            }
+        }
+
+        onLoaded: root.activateSceneLoader(sceneLoaderC)
+        onStatusChanged: {
+            if (status === Loader.Error)
+                console.warn("[IslandPresenter] content load failed: ", source)
+        }
+    }
+
     Timer {
         id: sceneCleanupTimer
 
@@ -369,7 +464,7 @@ Item {
             const loader = root.cleanupContentLoader
             root.cleanupContentLoader = null
 
-            if (loader && loader !== root.activeContentLoader) {
+            if (loader && loader !== root.activeContentLoader && loader !== root.retainedCompactContentLoader) {
                 loader.opacity = 0.0
                 loader.source = ""
             }
