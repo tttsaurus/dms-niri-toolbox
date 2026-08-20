@@ -6,6 +6,7 @@ import qs.Services
 import qs.Widgets
 
 import "../../core" as Core
+import "utils" as Utils
 
 Core.IslandWidget {
     id: root
@@ -39,6 +40,7 @@ Core.IslandWidget {
 
         return String(root.player?.identity || "").trim()
     }
+    readonly property url artworkSource: TrackArtService.resolvedArtUrl
 
     minimumWidthHint: 440
     preferredWidthHint: 560
@@ -46,6 +48,15 @@ Core.IslandWidget {
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
+
+    glowColorHint: albumColorExtractor.colorHint
+
+    Utils.AlbumColorExtractor {
+        id: albumColorExtractor
+        source: root.artworkSource
+        darkBackgroundBoostEnabled: true
+        darkBackgroundBoostStrength: 0.75
+    }
 
     function previous() {
         if (!root.canGoPrevious)

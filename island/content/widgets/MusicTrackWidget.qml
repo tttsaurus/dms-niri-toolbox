@@ -7,6 +7,7 @@ import qs.Services
 import qs.Widgets
 
 import "../../core" as Core
+import "utils" as Utils
 
 Core.IslandWidget {
     id: root
@@ -90,6 +91,15 @@ Core.IslandWidget {
 
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
+
+    glowColorHint: detailed ? albumColorExtractor.colorHint : null
+
+    Utils.AlbumColorExtractor {
+        id: albumColorExtractor
+        source: root.artworkSource
+        darkBackgroundBoostEnabled: true
+        darkBackgroundBoostStrength: 1.0
+    }
 
     TextMetrics {
         id: metadataTitleMetrics

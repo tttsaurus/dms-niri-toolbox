@@ -33,7 +33,7 @@ QtObject {
         switch (String(widgetId ?? "")) {
             case "test1":
                 return {
-                    source: Qt.resolvedUrl("../content/widgets/Test1Widget.qml"),
+                    source: Qt.resolvedUrl("../content/widgets/debug/Test1Widget.qml"),
                     activations: {
                         compact: {
                             navigation: "push",
@@ -44,7 +44,7 @@ QtObject {
                 }
             case "test2":
                 return {
-                    source: Qt.resolvedUrl("../content/widgets/Test2Widget.qml"),
+                    source: Qt.resolvedUrl("../content/widgets/debug/Test2Widget.qml"),
                     activations: {
                         peek: {
                             navigation: "back"
@@ -60,7 +60,7 @@ QtObject {
                 }
             case "test3":
                 return {
-                    source: Qt.resolvedUrl("../content/widgets/Test3Widget.qml"),
+                    source: Qt.resolvedUrl("../content/widgets/debug/Test3Widget.qml"),
                     activations: {
                         peek: {
                             navigation: "back"
@@ -69,7 +69,7 @@ QtObject {
                 }
             case "test3Launcher":
                 return {
-                    source: Qt.resolvedUrl("../content/widgets/Test3LauncherWidget.qml"),
+                    source: Qt.resolvedUrl("../content/widgets/debug/Test3LauncherWidget.qml"),
                     activations: {
                         peek: {
                             navigation: "push",

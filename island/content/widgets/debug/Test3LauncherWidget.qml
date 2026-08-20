@@ -3,7 +3,7 @@ import QtQuick
 import qs.Common
 import qs.Widgets
 
-import "../../core" as Core
+import "../../../core" as Core
 
 Core.IslandWidget {
     id: root
