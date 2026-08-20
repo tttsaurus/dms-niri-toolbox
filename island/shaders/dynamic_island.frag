@@ -155,7 +155,10 @@ void main() {
     vec2 localSize = halfSize * 2.0;
     float minSize = min(localSize.x, localSize.y);
 
-    vec2 materialPos = p / max(localSize.y, 1.0);
+    float aspectRatio = localSize.x / max(localSize.y, 1.0);
+    float widthMix = 0.65 * smoothstep(1.3, 4.5, aspectRatio);
+    float materialWidth = mix(localSize.y, localSize.x, widthMix);
+    vec2 materialPos = vec2(p.x / max(materialWidth, 1.0), p.y / max(localSize.y, 1.0));
 
     float centerDistance = length(materialPos);
     float centerGlow = 1.0 - smoothstep(0.05, 0.85, centerDistance);
