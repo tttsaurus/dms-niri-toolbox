@@ -47,6 +47,10 @@ Item {
     readonly property real requestedWidth: root.hintedDimension(root.sceneContext?.widthHint,root.hasWidget ? Math.max(420, root.widgetWidthHint + Theme.spacingL * 2) : 520)
     readonly property real requestedHeight: root.hintedDimension(root.sceneContext?.heightHint, root.hasWidget ? Math.max(180, root.widgetHeightHint + Theme.spacingL * 4) : 260)
 
+    readonly property var baseColorHint: root.hasWidget ? expandedWidgetHost.baseColorHint : null
+    readonly property var glowColorHint: root.hasWidget ? expandedWidgetHost.glowColorHint : null
+    readonly property var edgeColorHint: root.hasWidget ? expandedWidgetHost.edgeColorHint : null
+
     readonly property bool wantsSplit: false
 
     Core.IslandContentRegistry {

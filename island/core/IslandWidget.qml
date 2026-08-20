@@ -13,6 +13,10 @@ Item {
     property real preferredWidthHint: root.minimumWidthHint
     property real preferredHeightHint: 36
 
+    property var baseColorHint: null
+    property var glowColorHint: null
+    property var edgeColorHint: null
+
     signal activated()
     signal statePatchRequested(var patch)
     signal accessRequested(var request)

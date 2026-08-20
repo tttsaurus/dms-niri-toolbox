@@ -43,6 +43,10 @@ Item {
         ? root.positiveDimension(widgetLoader.item?.preferredHeightHint ?? widgetLoader.item?.implicitHeight, 36)
         : 36
 
+    readonly property var baseColorHint: root.widgetReady ? (widgetLoader.item?.baseColorHint ?? null) : null
+    readonly property var glowColorHint: root.widgetReady ? (widgetLoader.item?.glowColorHint ?? null) : null
+    readonly property var edgeColorHint: root.widgetReady ? (widgetLoader.item?.edgeColorHint ?? null) : null
+
     property real visibilityProgress: 0.0
     readonly property real layoutWidth: root.preferredWidthHint * root.visibilityProgress
 

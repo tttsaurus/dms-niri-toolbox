@@ -20,6 +20,9 @@ Item {
     readonly property real preferredHeightHint: 36
     readonly property string preferredSideHint: "right"
 
+    readonly property var glowColorHint: "#baff6b"
+    readonly property var edgeColorHint: '#edffd8'
+
     implicitWidth: root.preferredWidthHint
     implicitHeight: root.preferredHeightHint
 

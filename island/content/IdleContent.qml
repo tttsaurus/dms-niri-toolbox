@@ -83,6 +83,10 @@ Item {
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
     readonly property real requestedReservationWidth: root.requestedWidth
 
+    readonly property var baseColorHint: notificationHost.baseColorHint ?? idleWidgetStrip.baseColorHint
+    readonly property var glowColorHint: notificationHost.glowColorHint ?? idleWidgetStrip.glowColorHint
+    readonly property var edgeColorHint: notificationHost.edgeColorHint ?? idleWidgetStrip.edgeColorHint
+
     property var _displaySplitPlan: null
 
     Core.IslandContentRegistry {

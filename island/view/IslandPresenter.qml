@@ -18,7 +18,7 @@ Item {
     property var cleanupContentLoader: null
     property var retainedCompactContentLoader: null
     property bool suppressSceneOpacityAnimation: false
-    property int sceneTransitionDuration: 180
+    property int sceneTransitionDuration: 210
     property int sceneTransitionCleanupSlack: 24
     readonly property var loadedContent: root.activeContentLoader?.item ?? null
 
@@ -43,6 +43,10 @@ Item {
     )
     readonly property real targetWidth: root.requestedWidth
     readonly property real targetHeight: root.requestedHeight
+
+    readonly property var contentBaseColorHint: root.loadedContent?.baseColorHint ?? null
+    readonly property var contentGlowColorHint: root.loadedContent?.glowColorHint ?? null
+    readonly property var contentEdgeColorHint: root.loadedContent?.edgeColorHint ?? null
 
     readonly property bool contentWantsSplit: root.loadedContent?.wantsSplit === true
     readonly property real contentSplitPercentage: {
@@ -346,6 +350,10 @@ Item {
 
         splitEnabled: root.contentWantsSplit
         splitPercentage: root.contentSplitPercentage
+
+        baseColorHint: root.contentBaseColorHint
+        glowColorHint: root.contentGlowColorHint
+        edgeColorHint: root.contentEdgeColorHint
     }
 
     MouseArea {

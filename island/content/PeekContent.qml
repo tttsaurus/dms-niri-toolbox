@@ -165,6 +165,20 @@ Item {
         : root.normalWidth
     readonly property real requestedHeight: Number(root.islandContext?.compactHeight ?? 36)
 
+    readonly property var widgetBaseColorHint: root.widgetAccessActive
+        ? (primaryWidgetHost.baseColorHint ?? splitCompanionHost.baseColorHint)
+        : overflowWidgetStrip.baseColorHint
+    readonly property var widgetGlowColorHint: root.widgetAccessActive
+        ? (primaryWidgetHost.glowColorHint ?? splitCompanionHost.glowColorHint)
+        : overflowWidgetStrip.glowColorHint
+    readonly property var widgetEdgeColorHint: root.widgetAccessActive
+        ? (primaryWidgetHost.edgeColorHint ?? splitCompanionHost.edgeColorHint)
+        : overflowWidgetStrip.edgeColorHint
+
+    readonly property var baseColorHint: notificationHost.baseColorHint ?? root.widgetBaseColorHint
+    readonly property var glowColorHint: notificationHost.glowColorHint ?? root.widgetGlowColorHint
+    readonly property var edgeColorHint: notificationHost.edgeColorHint ?? root.widgetEdgeColorHint
+
     property var _displaySplitPlan: null
     property string _displayFocusedSplitOwner: ""
     property var _displayFocusedSplitPlan: null

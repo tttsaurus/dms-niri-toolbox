@@ -13,6 +13,10 @@ Item {
     property real hostHeight: root.height
     property bool animateVisibility: true
 
+    readonly property var baseColorHint: root.firstColorHint("baseColorHint")
+    readonly property var glowColorHint: root.firstColorHint("glowColorHint")
+    readonly property var edgeColorHint: root.firstColorHint("edgeColorHint")
+
     signal statePatchRequested(string widgetId, var patch)
     signal accessRequested(var request)
 
@@ -20,6 +24,20 @@ Item {
 
     implicitWidth: root.naturalWidth
     implicitHeight: root.hostHeight
+
+    function firstColorHint(propertyName) {
+        for (let i = 0; i < widgetRepeater.count; ++i) {
+            const slot = widgetRepeater.itemAt(i)
+            if (!slot || !slot.colorHintActive)
+                continue
+
+            const value = slot[propertyName]
+            if (value !== null && typeof value !== "undefined")
+                return value
+        }
+
+        return null
+    }
 
     function widgetStateFor(widgetId) {
         const id = String(widgetId ?? "")
@@ -55,6 +73,12 @@ Item {
                 readonly property real leadingSpacing: index > 0
                     ? root.spacing * widgetHost.visibilityProgress * root.presenceBefore(index)
                     : 0
+
+                readonly property bool colorHintActive: widgetHost.widgetVisible || widgetHost.visibilityProgress > 0.001
+
+                readonly property var baseColorHint: widgetHost.baseColorHint
+                readonly property var glowColorHint: widgetHost.glowColorHint
+                readonly property var edgeColorHint: widgetHost.edgeColorHint
 
                 width: widgetSlot.leadingSpacing + widgetHost.layoutWidth
                 height: root.height

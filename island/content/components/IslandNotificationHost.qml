@@ -35,6 +35,24 @@ Item {
         ? "left"
         : "right"
 
+    readonly property bool colorHintActive: root.notificationReady && (
+            root.notificationPresented
+            || root.presentationProgress > 0.001
+            || root.normalizedSplitProgress > 0.001
+        )
+
+    readonly property var baseColorHint: root.colorHintActive
+        ? (rendererLoader.item?.baseColorHint ?? null)
+        : null
+
+    readonly property var glowColorHint: root.colorHintActive
+        ? (rendererLoader.item?.glowColorHint ?? null)
+        : null
+
+    readonly property var edgeColorHint: root.colorHintActive
+        ? (rendererLoader.item?.edgeColorHint ?? null)
+        : null
+
     readonly property bool notificationPresented: root.notificationVisible && root.notificationReady
     readonly property real normalizedSplitProgress: Math.max(0, Math.min(1, Number(root.splitProgress) || 0))
     readonly property real visualProgress: Math.min(root.presentationProgress, Math.sqrt(root.normalizedSplitProgress))

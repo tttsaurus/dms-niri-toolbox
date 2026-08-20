@@ -14,6 +14,10 @@ Item {
     property bool splitEnabled: false
     property real splitPercentage: 0.5
 
+    property var baseColorHint: null
+    property var glowColorHint: null
+    property var edgeColorHint: null
+
     // -------------------- Config Reading --------------------
 
     function clamp(value, minValue, maxValue) {
@@ -272,9 +276,17 @@ Item {
         }
     }
 
-    readonly property color baseColor: root._baseColor
-    readonly property color glowColor: root._followDmsColorSettings ? Theme.surfaceTint : root._glowColor
-    readonly property color edgeColor: root._followDmsColorSettings ? Theme.outline : root._edgeColor
+    readonly property color baseColor: root.baseColorHint ?? root._baseColor
+    readonly property color glowColor: root.glowColorHint ?? (
+            root._followDmsColorSettings 
+                ? Theme.surfaceTint
+                : root._glowColor
+        )
+    readonly property color edgeColor: root.edgeColorHint ?? (
+            root._followDmsColorSettings
+                ? Theme.outline
+                : root._edgeColor
+        )
     readonly property int shadowWidth: clamp(root._shadowWidth, 0, root.shapeInset)
     readonly property real shadowIntensity: root._shadowIntensity
     readonly property bool interiorGlow: root._interiorGlow
@@ -293,7 +305,7 @@ Item {
     property color animatedBaseColor: root.baseColor
     Behavior on animatedBaseColor {
         ColorAnimation {
-            duration: 200
+            duration: 240
             easing.type: Easing.OutQuart
         }
     }
@@ -301,7 +313,7 @@ Item {
     property color animatedGlowColor: root.glowColor
     Behavior on animatedGlowColor {
         ColorAnimation {
-            duration: 200
+            duration: 240
             easing.type: Easing.OutQuart
         }
     }
@@ -309,7 +321,7 @@ Item {
     property color animatedEdgeColor: root.edgeColor
     Behavior on animatedEdgeColor {
         ColorAnimation {
-            duration: 200
+            duration: 240
             easing.type: Easing.OutQuart
         }
     }
