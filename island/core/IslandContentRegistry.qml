@@ -22,6 +22,8 @@ QtObject {
                 return Qt.resolvedUrl("../content/notifications/JavaVersionSwitchNotification.qml")
             case "powerConnected":
                 return Qt.resolvedUrl("../content/notifications/PowerConnectedNotification.qml")
+            case "powerDisconnected":
+                return Qt.resolvedUrl("../content/notifications/PowerDisconnectedNotification.qml")
             default:
                 return ""
         }

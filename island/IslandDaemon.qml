@@ -77,19 +77,26 @@ PluginComponent {
             const wasPluggedIn = root.previousPluggedIn
             root.previousPluggedIn = pluggedIn
 
-            if (BatteryService.suppressSound
-                    || !root.dynamicIslandEnabled
-                    || !BatteryService.batteryAvailable
-                    || !pluggedIn
-                    || wasPluggedIn) return
+            if (!root.dynamicIslandEnabled || !BatteryService.batteryAvailable) return
 
-            islandController.acceptRequest("notification", {
-                type: "powerConnected",
-                ttl: 2000,
-                payload: {
-                    level: Math.round(BatteryService.batteryLevel)
-                }
-            })
+            if (pluggedIn && !wasPluggedIn) {
+                islandController.acceptRequest("notification", {
+                    type: "powerConnected",
+                    ttl: 2000,
+                    payload: {
+                        level: Math.round(BatteryService.batteryLevel)
+                    }
+                })
+            }
+            if (!pluggedIn && wasPluggedIn) {
+                islandController.acceptRequest("notification", {
+                    type: "powerDisconnected",
+                    ttl: 2000,
+                    payload: {
+                        level: Math.round(BatteryService.batteryLevel)
+                    }
+                })
+            }
         }
     }
 
