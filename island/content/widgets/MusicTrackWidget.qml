@@ -11,7 +11,6 @@ import "../../core" as Core
 Core.IslandWidget {
     id: root
 
-    // visual host metric supplied by the composing scene
     property real hostInset: 5
     property real hostHeight: 0
     property var viewOptions: ({})

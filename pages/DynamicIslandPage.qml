@@ -63,6 +63,22 @@ Item {
 
             TSliderSetting {
                 toolboxRoot: root.toolboxRoot
+                settingKey: "islandGeometryInset"
+
+                text: "Island Geometry Inset"
+                description: "Inward margin applied to the Island geometry"
+
+                value: root.toolboxRoot ? root.toolboxRoot.islandGeometryInset : 5
+
+                minimum: 0
+                maximum: 10
+
+                integer: true
+                unit: "px"
+            }
+
+            TSliderSetting {
+                toolboxRoot: root.toolboxRoot
                 settingKey: "islandReservedWidth"
 
                 text: "Island Initial Idle Width"

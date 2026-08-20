@@ -3,6 +3,8 @@ import QtQuick
 Item {
     id: root
 
+    property alias contentItem: contentLayer
+
     required property real targetWidth
     required property real targetHeight
     required property string mode
@@ -10,17 +12,15 @@ Item {
     property bool splitEnabled: false
     property real splitPercentage: 0.5
 
-    property alias contentItem: contentLayer
-
-    readonly property real shapeInset: 5.0
+    readonly property real shapeInset: {
+        const value = Number(pluginData.islandGeometryInset ?? 5)
+        return Number.isFinite(value) ? Math.floor(value) : 5
+    }
     readonly property real targetRadius: root._targetRadius
-    readonly property int geometryAnimationDuration: 260
 
-    property bool _geometryReady: false
-    property real _geometryStartWidth: 0
-    property real _geometryStartHeight: 0
-    property real _geometryEndWidth: 0
-    property real _geometryEndHeight: 0
+    function clamp(value, minValue, maxValue) {
+        return Math.max(minValue, Math.min(maxValue, value))
+    }
 
     readonly property int islandCompactRadius: {
         const value = Number(pluginData.islandCompactRadius ?? 18)
@@ -33,82 +33,6 @@ Item {
     readonly property int islandExpandedRadius: {
         const value = Number(pluginData.islandExpandedRadius ?? 28)
         return Number.isFinite(value) ? Math.floor(value) : 28
-    }
-
-    function clamp(value, minValue, maxValue) {
-        return Math.max(minValue, Math.min(maxValue, value))
-    }
-
-    function scheduleGeometryCommit() {
-        if (root._geometryReady)
-            geometryCommitTimer.restart()
-    }
-
-    function geometryEndpointMatches(widthValue, heightValue) {
-        return Math.abs(root._geometryEndWidth - widthValue) < 0.01
-            && Math.abs(root._geometryEndHeight - heightValue) < 0.01
-    }
-
-    function geometryMatches(widthValue, heightValue) {
-        return Math.abs(root.width - widthValue) < 0.01
-            && Math.abs(root.height - heightValue) < 0.01
-    }
-
-    function applyGeometryProgress(value) {
-        const progress = root.clamp(Number(value), 0, 1)
-        root.width = root._geometryStartWidth + (root._geometryEndWidth - root._geometryStartWidth) * progress
-        root.height = root._geometryStartHeight + (root._geometryEndHeight - root._geometryStartHeight) * progress
-    }
-
-    function snapGeometry(widthValue, heightValue) {
-        root._geometryStartWidth = widthValue
-        root._geometryStartHeight = heightValue
-        root._geometryEndWidth = widthValue
-        root._geometryEndHeight = heightValue
-        geometryClock.progress = 1.0
-        root.width = widthValue
-        root.height = heightValue
-    }
-
-    function finishGeometryCommit() {
-        root.applyGeometryProgress(1.0)
-
-        const nextWidth = Number(root.targetWidth)
-        const nextHeight = Number(root.targetHeight)
-        if (!root.geometryEndpointMatches(nextWidth, nextHeight))
-            root.scheduleGeometryCommit()
-    }
-
-    function commitGeometry(animated) {
-        const nextWidth = Number(root.targetWidth)
-        const nextHeight = Number(root.targetHeight)
-        if (!Number.isFinite(nextWidth) || nextWidth <= 0 || !Number.isFinite(nextHeight) || nextHeight <= 0) return
-
-        geometryCommitTimer.stop()
-
-        if (geometryAnimation.running && root.geometryEndpointMatches(nextWidth, nextHeight)) return
-
-        const currentWidth = root.width
-        const currentHeight = root.height
-        geometryAnimation.stop()
-
-        if (!animated || currentWidth <= 0 || currentHeight <= 0) {
-            root.snapGeometry(nextWidth, nextHeight)
-            return
-        }
-
-        if (root.geometryMatches(nextWidth, nextHeight)) {
-            root.snapGeometry(nextWidth, nextHeight)
-            return
-        }
-
-        root._geometryStartWidth = currentWidth
-        root._geometryStartHeight = currentHeight
-        root._geometryEndWidth = nextWidth
-        root._geometryEndHeight = nextHeight
-        geometryClock.progress = 0.0
-        root.applyGeometryProgress(0.0)
-        geometryAnimation.restart()
     }
 
     readonly property real _targetRadius: {
@@ -182,38 +106,13 @@ Item {
         running: root.visible
     }
 
-    width: 0
-    height: 0
-    clip: true
+    AnimatedGeometry {
+        target: root
+        targetWidth: root.targetWidth
+        targetHeight: root.targetHeight
 
-    onTargetWidthChanged: root.scheduleGeometryCommit()
-    onTargetHeightChanged: root.scheduleGeometryCommit()
-
-    Timer {
-        id: geometryCommitTimer
-
-        interval: 0
-        repeat: false
-        onTriggered: root.commitGeometry(true)
-    }
-
-    QtObject {
-        id: geometryClock
-
-        property real progress: 1.0
-        onProgressChanged: root.applyGeometryProgress(progress)
-    }
-
-    NumberAnimation {
-        id: geometryAnimation
-
-        target: geometryClock
-        property: "progress"
-        from: 0.0
-        to: 1.0
-        duration: root.geometryAnimationDuration
-        easing.type: Easing.OutQuart
-        onFinished: root.finishGeometryCommit()
+        duration: 260
+        easingType: Easing.OutQuart
     }
 
     // keep a visible fallback until the local .qsb has been baked,
@@ -258,12 +157,16 @@ Item {
     }
 
     Item {
-        id: contentLayer
-        anchors.fill: parent
-    }
+        id: contentClip
 
-    Component.onCompleted: {
-        root._geometryReady = true
-        root.commitGeometry(false)
+        anchors.fill: parent
+        anchors.margins: root.shapeInset
+        clip: true
+
+        Item {
+            id: contentLayer
+
+            anchors.fill: parent
+        }
     }
 }

@@ -131,6 +131,19 @@ PluginSettings {
     }
 
     SliderSetting {
+        settingKey: "islandGeometryInset"
+
+        label: "Island Geometry Inset"
+        description: "Inward margin applied to the Island geometry"
+
+        defaultValue: 5
+
+        minimum: 0
+        maximum: 10
+        unit: "px"
+    }
+
+    SliderSetting {
         settingKey: "islandReservedWidth"
 
         label: "Island Initial Idle Width"
