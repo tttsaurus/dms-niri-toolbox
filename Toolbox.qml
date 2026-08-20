@@ -24,6 +24,11 @@ PluginComponent {
 
     readonly property bool dynamicIslandEnabled: pluginData.dynamicIslandEnabled ?? false
 
+    readonly property int islandGeometryInset: {
+        const value = Number(pluginData.islandGeometryInset ?? 5)
+        return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 5
+    }
+
     readonly property int islandInitialIdleWidth: {
         const value = Number(pluginData.islandReservedWidth ?? 168)
         return Number.isFinite(value) ? Math.max(1, Math.floor(value)) : 168

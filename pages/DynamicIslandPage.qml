@@ -250,7 +250,7 @@ Item {
                 settingKey: "followDmsColorSettingsCompact"
 
                 text: "Follow DMS Color Settings (Compact Mode)"
-                description: "Foloow DMS color settings for Base/Glow/Edge color"
+                description: "Foloow DMS color settings for Glow/Edge color"
 
                 checked: root.toolboxRoot ? root.toolboxRoot.followDmsColorSettingsCompact : false
             }
@@ -348,7 +348,7 @@ Item {
                 settingKey: "followDmsColorSettingsPeek"
 
                 text: "Follow DMS Color Settings (Peek Mode)"
-                description: "Foloow DMS color settings for Base/Glow/Edge color"
+                description: "Foloow DMS color settings for Glow/Edge color"
 
                 checked: root.toolboxRoot ? root.toolboxRoot.followDmsColorSettingsPeek : false
             }
@@ -446,7 +446,7 @@ Item {
                 settingKey: "followDmsColorSettingsExpanded"
 
                 text: "Follow DMS Color Settings (Expanded Mode)"
-                description: "Foloow DMS color settings for Base/Glow/Edge color"
+                description: "Foloow DMS color settings for Glow/Edge color"
 
                 checked: root.toolboxRoot ? root.toolboxRoot.followDmsColorSettingsExpanded : false
             }

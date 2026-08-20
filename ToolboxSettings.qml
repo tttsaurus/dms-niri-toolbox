@@ -286,7 +286,7 @@ PluginSettings {
         settingKey: "followDmsColorSettingsCompact"
 
         label: "Follow DMS Color Settings (Compact Mode)"
-        description: "Foloow DMS color settings for Base/Glow/Edge color"
+        description: "Foloow DMS color settings for Glow/Edge color"
 
         defaultValue: false
     }
@@ -369,7 +369,7 @@ PluginSettings {
         settingKey: "followDmsColorSettingsPeek"
 
         label: "Follow DMS Color Settings (Peek Mode)"
-        description: "Foloow DMS color settings for Base/Glow/Edge color"
+        description: "Foloow DMS color settings for Glow/Edge color"
 
         defaultValue: false
     }
@@ -452,7 +452,7 @@ PluginSettings {
         settingKey: "followDmsColorSettingsExpanded"
 
         label: "Follow DMS Color Settings (Expanded Mode)"
-        description: "Foloow DMS color settings for Base/Glow/Edge color"
+        description: "Foloow DMS color settings for Glow/Edge color"
 
         defaultValue: false
     }
