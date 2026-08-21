@@ -59,10 +59,31 @@ Item {
         if (currentLuminance <= 0.0001)
             return Qt.rgba(red, green, blue, 1.0)
 
+        const maximum = Math.max(red, green, blue)
+        const minimum = Math.min(red, green, blue)
+
+        const chroma = maximum - minimum
+        const saturation = maximum > 0.0001 ? chroma / maximum : 0.0
+
+        const colorStrength = root.smoothstep(0.18, 0.65, saturation) * root.smoothstep(0.08, 0.45, chroma)
+
+        const weaknessFactor = 1.0 - colorStrength
+        const saturationScale = 1.0 + weaknessFactor * strength * 0.65
+
+        const saturatedRed = currentLuminance + (red - currentLuminance) * saturationScale
+        const saturatedGreen = currentLuminance + (green - currentLuminance) * saturationScale
+        const saturatedBlue = currentLuminance + (blue - currentLuminance) * saturationScale
+
         const darknessFactor = 1.0 - root.smoothstep(0.16, 0.42, currentLuminance)
 
-        if (darknessFactor <= 0.0)
-            return Qt.rgba(red, green, blue, 1.0)
+        if (darknessFactor <= 0.0) {
+            return Qt.rgba(
+                root.clamp(saturatedRed, 0.0, 1.0),
+                root.clamp(saturatedGreen, 0.0, 1.0),
+                root.clamp(saturatedBlue, 0.0, 1.0),
+                1.0
+            )
+        }
 
         const targetLuminance = 0.38
         const maximumScale = 1.85
@@ -71,9 +92,9 @@ Item {
         const finalScale = 1.0 + (desiredScale - 1.0) * boostAmount
 
         return Qt.rgba(
-            root.clamp(red * finalScale, 0.0, 1.0),
-            root.clamp(green * finalScale, 0.0, 1.0),
-            root.clamp(blue * finalScale, 0.0, 1.0),
+            root.clamp(saturatedRed * finalScale, 0.0, 1.0),
+            root.clamp(saturatedGreen * finalScale, 0.0, 1.0),
+            root.clamp(saturatedBlue * finalScale, 0.0, 1.0),
             1.0
         )
     }
@@ -119,7 +140,10 @@ Item {
             const saturation = maximum > 0.0001 ? chroma / maximum : 0.0
             const pixelLuminance = root.luminance(red, green, blue)
 
-            if (pixelLuminance < 0.035)
+            if (pixelLuminance < 0.12)
+                continue
+
+            if (saturation < 0.18 || chroma < 0.08)
                 continue
 
             const quantizedRed = redByte >> 4
